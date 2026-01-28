@@ -61,8 +61,23 @@ export async function getDailyResults() {
     }
     const results = await response.json();
 
-    const formattedData: DailyResult[] = results.map((res: any) => ({
-      date: new Date(res.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // Sunday = 0, Monday = 1, ...
+    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Days to subtract to get to last Monday
+
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - diff);
+    startOfWeek.setHours(0, 0, 0, 0); // Set to start of the day
+
+    const thisWeeksResults = results.filter((res: any) => {
+      if (!res.date) return false;
+      // Parse date as local time to avoid timezone issues on server
+      const resultDate = new Date(res.date + 'T00:00:00');
+      return resultDate >= startOfWeek;
+    });
+
+    const formattedData: DailyResult[] = thisWeeksResults.map((res: any) => ({
+      date: new Date(res.date + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
       s11_00: undefined,
       s12_01: res.morning
         ? {
@@ -81,9 +96,10 @@ export async function getDailyResults() {
         : undefined,
     }));
 
+    // The API returns data from newest to oldest. Reverse it to show Monday first.
     return {
       success: true,
-      data: formattedData.slice(0, 7),
+      data: formattedData.reverse(),
     };
   } catch (error: any) {
     console.error('Failed to get daily results:', error);
