@@ -7,7 +7,11 @@ import { updateHistoricalDataDaily } from '@/ai/flows/update-historical-data-dai
 export async function handleAnalysis() {
   try {
     const result = await analyzeRecentNumberPatterns({});
-    return { success: true, analysis: result.analysis };
+    return {
+      success: true,
+      analysis: result.analysis,
+      numberFrequency: result.numberFrequency,
+    };
   } catch (error) {
     console.error('Analysis failed:', error);
     return {

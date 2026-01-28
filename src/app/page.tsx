@@ -1,6 +1,7 @@
 import Header from '@/components/layout/header';
 import CurrentNumber from '@/components/lottery/current-number';
 import PatternAnalysis from '@/components/lottery/pattern-analysis';
+import WeeklyHistory from '@/components/lottery/weekly-history';
 
 export default function Home() {
   return (
@@ -9,6 +10,7 @@ export default function Home() {
       <main className="container mx-auto flex-1 px-4 py-8 md:px-6 md:py-12">
         <div className="grid max-w-3xl mx-auto gap-8 lg:gap-12">
           <CurrentNumber />
+          <WeeklyHistory />
           <PatternAnalysis />
         </div>
       </main>
