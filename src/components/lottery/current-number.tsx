@@ -62,8 +62,8 @@ export default function CurrentNumber() {
     }, 1000);
 
     fetchData();
-    // Refresh every minute to get live data.
-    const interval = setInterval(fetchData, 60 * 1000); 
+    // Refresh every 10 seconds for a near real-time experience.
+    const interval = setInterval(fetchData, 10 * 1000); 
     
     return () => {
         clearInterval(timer);
