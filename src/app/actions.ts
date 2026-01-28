@@ -1,7 +1,7 @@
 'use server';
 
 import { analyzeSetPatterns } from '@/ai/flows/analyze-recent-number-patterns';
-import type { DailyResult } from './types';
+import type { DailyResult, Result } from './types';
 
 function get2DNumber(setIndex: string, setValue: string): string {
     // Sanitize inputs by removing commas
@@ -51,59 +51,104 @@ export async function getLiveSetData() {
   }
 }
 
+// Helper function to format date to DD-MM-YYYY for the new API
+function formatDateToDdMmYyyy(date: Date): string {
+    const d = new Date(date);
+    let day = '' + d.getDate();
+    let month = '' + (d.getMonth() + 1);
+    const year = d.getFullYear();
+
+    if (day.length < 2) 
+        day = '0' + day;
+    if (month.length < 2) 
+        month = '0' + month;
+
+    return [day, month, year].join('-');
+}
+
+
 export async function getDailyResults() {
   try {
-    const response = await fetch('https://api.thaistock2d.com/history', {
-      cache: 'no-store',
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch history data: ${response.statusText}`);
-    }
-    const results = (await response.json()) || [];
-
     const today = new Date();
-    // Get Y, M, D from today's date in the server's local timezone.
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const date = today.getDate();
     const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon...
 
-    // Calculate the date of the most recent Monday. This is done in the server's timezone.
-    const mondayDate = new Date(year, month, date); // A clean date object for today at midnight.
-    mondayDate.setDate(mondayDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    const datesToFetch: Date[] = [];
+    const monday = new Date(today);
+    // Go back to the most recent Monday
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    monday.setHours(0, 0, 0, 0); // Set to start of the day
 
-    const thisWeeksResults = results.filter((res: any) => {
-      if (!res.date) return false;
-      // API date 'YYYY-MM-DD' is parsed as UTC. Appending T00:00:00 makes it parse in local time.
-      // This ensures a correct comparison with mondayDate.
-      const resultDate = new Date(res.date + 'T00:00:00');
-      return resultDate >= mondayDate;
+    // Create an array of dates from Monday to today
+    for (let i = 0; i < 7; i++) {
+        const currentDate = new Date(monday);
+        currentDate.setDate(monday.getDate() + i);
+        if (currentDate > today) {
+            break;
+        }
+        // Only fetch for weekdays
+        if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+            datesToFetch.push(currentDate);
+        }
+    }
+    
+    if (datesToFetch.length === 0) {
+        return { success: true, data: [] };
+    }
+
+    const dailyPromises = datesToFetch.map(async (date) => {
+        const formattedDate = formatDateToDdMmYyyy(date);
+        const response = await fetch(`https://api.thaistock2d.com/2d_result?date=${formattedDate}`, {
+            cache: 'no-store',
+        });
+        
+        if (!response.ok) {
+            console.error(`Failed to fetch data for ${formattedDate}: ${response.statusText}`);
+            return null; // Don't let one failed day stop the whole process
+        }
+
+        const apiResponse = await response.json();
+        
+        // The API returns a message like { "result": "Not Found" } or an array
+        if (!apiResponse || apiResponse.result === "Not Found" || !Array.isArray(apiResponse.result)) {
+            // Return a valid empty structure for this date
+            return {
+                date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
+            };
+        }
+        
+        const dailyResult: DailyResult = {
+            date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
+        };
+
+        apiResponse.result.forEach((session: any) => {
+             const sessionResult: Result = {
+                set: session.set,
+                value: session.value,
+                twoD: session.number,
+            };
+
+            if (session.time === '12:01') {
+                dailyResult.s12_01 = sessionResult;
+            } else if (session.time === '16:30') {
+                dailyResult.s16_30 = sessionResult;
+            }
+        });
+        
+        return dailyResult;
     });
 
-    const formattedData: DailyResult[] = thisWeeksResults.map((res: any) => ({
-      date: new Date(res.date + 'T00:00:00').toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
-      s11_00: undefined,
-      s12_01: res.morning
-        ? {
-            set: res.morning.set,
-            value: res.morning.value,
-            twoD: res.morning.number,
-          }
-        : undefined,
-      s15_00: undefined,
-      s16_30: res.evening
-        ? {
-            set: res.evening.set,
-            value: res.evening.value,
-            twoD: res.evening.number,
-          }
-        : undefined,
-    }));
+    const results = (await Promise.all(dailyPromises)).filter(Boolean) as DailyResult[];
+    
+    // Sort results by date to ensure they are in order
+    results.sort((a, b) => {
+        const dateA = new Date(`2024/${a.date}`); // Use a consistent year for reliable sorting
+        const dateB = new Date(`2024/${b.date}`);
+        return dateA.getTime() - dateB.getTime();
+    });
 
-    // The API returns data from newest to oldest. Reverse it to show Monday first.
     return {
       success: true,
-      data: formattedData.reverse(),
+      data: results,
     };
   } catch (error: any) {
     console.error('Failed to get daily results:', error);
