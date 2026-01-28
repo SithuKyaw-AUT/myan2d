@@ -4,24 +4,32 @@ import { getSetData } from '@/ai/flows/get-historical-data';
 import { analyzeSetPatterns } from '@/ai/flows/analyze-recent-number-patterns';
 import type { DailyResult } from './types';
 
-function parseSetIndex(setIndex: string): number {
-    return parseFloat(setIndex.replace(/,/g, ''));
-}
+function get2DNumber(setIndex: string, setValue: string): string {
+    // Sanitize inputs by removing commas
+    const cleanSetIndex = setIndex.replace(/,/g, '');
+    const cleanSetValue = setValue.replace(/,/g, '');
 
-function get2DFromSet(setIndex: string): string {
-    const parsed = parseSetIndex(setIndex);
-    return parsed.toFixed(2).slice(-2);
+    // Last digit after dot from SET index
+    const setDecimalPart = cleanSetIndex.split('.')[1];
+    const firstDigit = setDecimalPart ? setDecimalPart.slice(-1) : '0';
+
+    // Last digit before dot from Value
+    const valueIntegerPart = cleanSetValue.split('.')[0];
+    const secondDigit = valueIntegerPart ? valueIntegerPart.slice(-1) : '0';
+
+    return `${firstDigit}${secondDigit}`;
 }
 
 export async function getLiveSetData() {
   try {
     const result = await getSetData({ type: 'live' });
-    if ('setIndex' in result) {
+    if ('setIndex' in result && 'value' in result) {
       return {
         success: true,
         data: {
             setIndex: result.setIndex,
-            twoD: get2DFromSet(result.setIndex),
+            value: result.value,
+            twoD: get2DNumber(result.setIndex, result.value),
             lastUpdated: result.lastUpdated,
         },
       };
@@ -52,7 +60,8 @@ export async function getDailyResults() {
 
             const data = {
                 set: res.setIndex,
-                twoD: get2DFromSet(res.setIndex),
+                value: res.value,
+                twoD: get2DNumber(res.setIndex, res.value),
             };
 
             // Simple check for morning/evening based on provided time
@@ -84,7 +93,7 @@ export async function handleAnalysis() {
         const historicalDataResult = await getSetData({ type: 'historical', days: 28 });
         
         if ('results' in historicalDataResult) {
-            const numbers = historicalDataResult.results.map(r => get2DFromSet(r.setIndex));
+            const numbers = historicalDataResult.results.map(r => get2DNumber(r.setIndex, r.value));
             if (numbers.length === 0) {
                 return { success: false, error: "Not enough data for analysis." };
             }

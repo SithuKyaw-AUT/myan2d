@@ -1,5 +1,5 @@
 export type DailyResult = {
     date: string;
-    morning?: { set: string; twoD: string };
-    evening?: { set:string; twoD: string };
+    morning?: { set: string; value: string; twoD: string };
+    evening?: { set: string; value: string; twoD: string };
 };

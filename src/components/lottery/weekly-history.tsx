@@ -31,7 +31,7 @@ export default function WeeklyHistory({ data }: { data: DailyResult[] }) {
               Daily Results
             </CardTitle>
             <CardDescription>
-              Morning (12:30) and Evening (16:30) results for this week.
+              Morning (12:00 PM MMT) and Evening (4:00 PM MMT) results.
             </CardDescription>
           </div>
         </div>
@@ -55,6 +55,7 @@ export default function WeeklyHistory({ data }: { data: DailyResult[] }) {
                         <div>
                             <p className="font-bold tracking-widest text-primary text-lg">{result.morning.twoD}</p>
                             <p className="text-xs text-muted-foreground">SET: {result.morning.set}</p>
+                            <p className="text-xs text-muted-foreground">Value: {result.morning.value}</p>
                         </div>
                     ) : (
                         <span className="text-muted-foreground">--</span>
@@ -65,6 +66,7 @@ export default function WeeklyHistory({ data }: { data: DailyResult[] }) {
                         <div>
                             <p className="font-bold tracking-widest text-primary text-lg">{result.evening.twoD}</p>
                             <p className="text-xs text-muted-foreground">SET: {result.evening.set}</p>
+                            <p className="text-xs text-muted-foreground">Value: {result.evening.value}</p>
                         </div>
                     ) : (
                         <span className="text-muted-foreground">--</span>
