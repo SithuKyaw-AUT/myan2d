@@ -22,19 +22,27 @@ function get2DNumber(setIndex: string, setValue: string): string {
 
 export async function getLiveSetData() {
   try {
-    const result = await getSetData({ type: 'live' });
-    if ('setIndex' in result && 'value' in result) {
+    const response = await fetch('https://api.thaistock2d.com/live', {
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to fetch live data: ${response.statusText}`);
+    }
+    const result = await response.json();
+    
+    if (result.live) {
+      const { set, value, time } = result.live;
       return {
         success: true,
         data: {
-            setIndex: result.setIndex,
-            value: result.value,
-            twoD: get2DNumber(result.setIndex, result.value),
-            lastUpdated: result.lastUpdated,
+            setIndex: set,
+            value: value,
+            twoD: get2DNumber(set, value),
+            lastUpdated: time,
         },
       };
     }
-    throw new Error("Invalid response for live data");
+    throw new Error("Invalid response format from live data API");
   } catch (error: any) {
     console.error('Failed to get live SET data:', error);
     return {
