@@ -9,10 +9,12 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
-// Define the input schema (currently empty as no input is needed)
-const UpdateHistoricalDataDailyInputSchema = z.object({});
+// Define the input schema, now with an optional sourceURL
+const UpdateHistoricalDataDailyInputSchema = z.object({
+  sourceURL: z.string().optional().describe('An optional URL to a specific website for the AI to search for the lottery result.'),
+});
 export type UpdateHistoricalDataDailyInput = z.infer<typeof UpdateHistoricalDataDailyInputSchema>;
 
 // Define the output schema
@@ -31,8 +33,13 @@ export async function updateHistoricalDataDaily(input: UpdateHistoricalDataDaily
 // Define the Genkit prompt for searching lottery results
 const searchLotteryResultsPrompt = ai.definePrompt({
   name: 'searchLotteryResultsPrompt',
-  prompt: `Find the latest 2D lottery results for Myanmar, today's date is {{{currentDate}}}. Provide the result in JSON format with a key called \"number\" that is a string.`,
-  output: {schema: z.object({number: z.string()})}
+  input: { schema: z.object({ currentDate: z.string(), sourceURL: z.string().optional() }) },
+  output: {schema: z.object({number: z.string()})},
+  prompt: `Search for the latest 2D lottery result for Myanmar for today's date: {{{currentDate}}}. The result should be the most recent one for today.
+{{#if sourceURL}}
+Please prioritize searching at this URL: {{{sourceURL}}}
+{{/if}}
+Provide the result in JSON format with a key called "number" that is a string containing only the two-digit number. If there are multiple results for today, return the latest one.`,
 });
 
 // Define the Genkit flow to update historical data daily
@@ -47,6 +54,7 @@ const updateHistoricalDataDailyFlow = ai.defineFlow(
       const currentDate = new Date().toLocaleDateString();
       const lotteryResult = await searchLotteryResultsPrompt({
         currentDate,
+        sourceURL: input.sourceURL,
       });
       
       const number = lotteryResult.output?.number;
@@ -57,7 +65,7 @@ const updateHistoricalDataDailyFlow = ai.defineFlow(
 
       return {
         success: true,
-        message: 'Successfully retrieved lottery data.  Database saving not yet implemented.',
+        message: 'Successfully retrieved lottery data. Database saving not yet implemented.',
         number: number,
       };
     } catch (error: any) {

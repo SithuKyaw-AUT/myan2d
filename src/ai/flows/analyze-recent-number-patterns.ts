@@ -9,8 +9,11 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { getHistoricalData } from '@/ai/flows/get-historical-data';
 
-const AnalyzeRecentNumberPatternsInputSchema = z.object({});
+const AnalyzeRecentNumberPatternsInputSchema = z.object({
+  sourceURL: z.string().optional().describe('An optional URL to a specific website for the AI to search for lottery results.'),
+});
 export type AnalyzeRecentNumberPatternsInput = z.infer<typeof AnalyzeRecentNumberPatternsInputSchema>;
 
 const AnalyzeRecentNumberPatternsOutputSchema = z.object({
@@ -34,7 +37,7 @@ const analyzeRecentNumberPatternsPrompt = ai.definePrompt({
   output: {schema: z.object({ analysis: z.string().describe('Analysis of lottery number patterns from the last four weeks.') })},
   prompt: `Analyze the lottery data from the last four weeks to identify number patterns.
 
-Provide insights into frequently drawn numbers and any other notable trends.
+Provide insights into frequently drawn numbers and any other notable trends. Be concise.
 
 Lottery Data:
 {{{lotteryData}}}`,
@@ -47,12 +50,12 @@ const analyzeRecentNumberPatternsFlow = ai.defineFlow(
     outputSchema: AnalyzeRecentNumberPatternsOutputSchema,
   },
   async input => {
-    // Fetch the last four weeks of lottery data from the database.
-    // Assume lottery data is an array of strings.
-    const lotteryData = await getFourWeeksLotteryData();
+    // Fetch the last four weeks (28 days) of lottery data.
+    const historicalData = await getHistoricalData({ numDays: 28, sourceURL: input.sourceURL });
+    const lotteryNumbers = historicalData.results.map(r => r.number) || [];
     
     // Calculate frequency
-    const frequencyMap = lotteryData.reduce((acc, num) => {
+    const frequencyMap = lotteryNumbers.reduce((acc, num) => {
       acc[num] = (acc[num] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -62,7 +65,7 @@ const analyzeRecentNumberPatternsFlow = ai.defineFlow(
       .sort((a, b) => b.count - a.count);
 
     const {output} = await analyzeRecentNumberPatternsPrompt({
-      lotteryData: JSON.stringify(lotteryData),
+      lotteryData: JSON.stringify(historicalData.results),
     });
 
     return {
@@ -71,19 +74,3 @@ const analyzeRecentNumberPatternsFlow = ai.defineFlow(
     };
   }
 );
-
-async function getFourWeeksLotteryData(): Promise<string[]> {
-  // TODO: Implement database retrieval of lottery data from the last four weeks
-  // Replace this with actual database retrieval logic using Firebase.
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve([
-        '12', '34', '56', '78', '90', '23', '78',
-        '13', '35', '57', '79', '91', '45', '78',
-        '14', '36', '58', '80', '92', '23', '12',
-        '15', '37', '59', '81', '93', '45', '78',
-        '23', '99', '01', '33', '55', '88', '12',
-      ]);
-    }, 500);
-  });
-}
