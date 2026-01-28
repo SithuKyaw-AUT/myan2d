@@ -59,20 +59,25 @@ export async function getDailyResults() {
     if (!response.ok) {
       throw new Error(`Failed to fetch history data: ${response.statusText}`);
     }
-    const results = await response.json();
+    const results = (await response.json()) || [];
 
+    // Use UTC to avoid timezone-related issues on the server.
     const today = new Date();
-    const dayOfWeek = today.getDay(); // Sunday = 0, Monday = 1, ...
-    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Days to subtract to get to last Monday
+    const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    
+    // In UTC, Sunday is 0, Monday is 1, ..., Saturday is 6
+    const dayOfWeek = todayUTC.getUTCDay();
+    
+    // Calculate days to subtract to get to the most recent Monday.
+    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - diff);
-    startOfWeek.setHours(0, 0, 0, 0); // Set to start of the day
+    const startOfWeek = new Date(todayUTC);
+    startOfWeek.setUTCDate(todayUTC.getUTCDate() - daysToSubtract);
 
     const thisWeeksResults = results.filter((res: any) => {
       if (!res.date) return false;
-      // Parse date as local time to avoid timezone issues on server
-      const resultDate = new Date(res.date + 'T00:00:00');
+      // API date 'YYYY-MM-DD' is parsed as UTC midnight, which is correct for comparison.
+      const resultDate = new Date(res.date);
       return resultDate >= startOfWeek;
     });
 
