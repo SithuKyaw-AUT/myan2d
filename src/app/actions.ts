@@ -1,6 +1,5 @@
 'use server';
 
-import { getSetData } from '@/ai/flows/get-historical-data';
 import { analyzeSetPatterns } from '@/ai/flows/analyze-recent-number-patterns';
 import type { DailyResult } from './types';
 
@@ -54,38 +53,36 @@ export async function getLiveSetData() {
 
 export async function getDailyResults() {
   try {
-    const result = await getSetData({ type: 'historical', days: 7 });
-    if ('results' in result) {
-        const groupedByDate: Record<string, DailyResult> = {};
-        
-        // The AI returns sorted from most recent, so we reverse to process chronologically
-        const sortedResults = result.results.reverse();
-
-        for (const res of sortedResults) {
-            if (!groupedByDate[res.date]) {
-                groupedByDate[res.date] = { date: res.date };
-            }
-
-            const data = {
-                set: res.setIndex,
-                value: res.value,
-                twoD: get2DNumber(res.setIndex, res.value),
-            };
-
-            // Simple check for morning/evening based on provided time
-            if (res.time.includes('12')) {
-                groupedByDate[res.date].morning = data;
-            } else if (res.time.includes('16') || res.time.includes('4')) {
-                groupedByDate[res.date].evening = data;
-            }
-        }
-
-      return {
-        success: true,
-        data: Object.values(groupedByDate).reverse(), // show most recent day first
-      };
+    const response = await fetch('https://api.thaistock2d.com/history', {
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch history data: ${response.statusText}`);
     }
-    throw new Error("Invalid response for historical data");
+    const results = await response.json();
+
+    const formattedData: DailyResult[] = results.map((res: any) => ({
+      date: new Date(res.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
+      morning: res.morning
+        ? {
+            set: res.morning.set,
+            value: res.morning.value,
+            twoD: res.morning.number,
+          }
+        : undefined,
+      evening: res.evening
+        ? {
+            set: res.evening.set,
+            value: res.evening.value,
+            twoD: res.evening.number,
+          }
+        : undefined,
+    }));
+
+    return {
+      success: true,
+      data: formattedData.slice(0, 7),
+    };
   } catch (error: any) {
     console.error('Failed to get daily results:', error);
     return {
@@ -98,21 +95,34 @@ export async function getDailyResults() {
 
 export async function handleAnalysis() {
     try {
-        const historicalDataResult = await getSetData({ type: 'historical', days: 28 });
-        
-        if ('results' in historicalDataResult) {
-            const numbers = historicalDataResult.results.map(r => get2DNumber(r.setIndex, r.value));
-            if (numbers.length === 0) {
-                return { success: false, error: "Not enough data for analysis." };
-            }
-            const analysisResult = await analyzeSetPatterns({ numbers });
-            return {
-                success: true,
-                analysis: analysisResult.analysis,
-                prediction: analysisResult.prediction,
-            };
+        const response = await fetch('https://api.thaistock2d.com/history', {
+            cache: 'no-store',
+        });
+        if (!response.ok) {
+            throw new Error(`Failed to fetch history data for analysis: ${response.statusText}`);
         }
-        throw new Error("Could not fetch historical data for analysis.");
+        const historicalDataResult = await response.json();
+
+        const numbers: string[] = [];
+        historicalDataResult.forEach((day: any) => {
+            if (day.morning && day.morning.number) {
+                numbers.push(day.morning.number);
+            }
+            if (day.evening && day.evening.number) {
+                numbers.push(day.evening.number);
+            }
+        });
+        
+        if (numbers.length === 0) {
+            return { success: false, error: "Not enough data for analysis." };
+        }
+        
+        const analysisResult = await analyzeSetPatterns({ numbers });
+        return {
+            success: true,
+            analysis: analysisResult.analysis,
+            prediction: analysisResult.prediction,
+        };
 
     } catch (error: any) {
         console.error('Analysis failed:', error);

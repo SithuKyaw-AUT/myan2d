@@ -1,5 +1,4 @@
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/get-set-data.ts';
-import '@/ai/flows/analyze-set-patterns.ts';
+import '@/ai/flows/analyze-recent-number-patterns.ts';
