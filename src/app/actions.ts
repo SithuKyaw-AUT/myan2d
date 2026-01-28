@@ -27,7 +27,16 @@ export async function getLiveSetData() {
     if (!response.ok) {
         throw new Error(`Failed to fetch live data: ${response.statusText}`);
     }
-    const result = await response.json();
+    
+    const responseText = await response.text();
+    let result;
+    try {
+        result = JSON.parse(responseText);
+    } catch (error) {
+        console.error('Error parsing live data JSON:', error);
+        console.error('Received non-JSON response:', responseText);
+        throw new Error("Invalid response from live data API");
+    }
     
     if (result.live) {
       const { set, value, time } = result.live;
@@ -109,8 +118,18 @@ export async function getDailyResults() {
                 console.error(`Failed to fetch data for ${formattedDate}: ${response.statusText}`);
                 return null; // Don't let one failed day stop the whole process
             }
-
-            const apiResponse = await response.json();
+            
+            const responseText = await response.text();
+            let apiResponse;
+            try {
+                apiResponse = JSON.parse(responseText);
+            } catch (error) {
+                console.error(`Error parsing JSON for ${formattedDate}:`, error);
+                console.error('Received non-JSON response:', responseText);
+                return {
+                    date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
+                };
+            }
             
             const dailyResult: DailyResult = {
                 date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
@@ -184,17 +203,28 @@ export async function handleAnalysis() {
         if (!response.ok) {
             throw new Error(`Failed to fetch history data for analysis: ${response.statusText}`);
         }
-        const historicalDataResult = await response.json();
+        
+        const responseText = await response.text();
+        let historicalDataResult;
+        try {
+            historicalDataResult = JSON.parse(responseText);
+        } catch (error) {
+            console.error('Error parsing history data JSON for analysis:', error);
+            console.error('Received non-JSON response:', responseText);
+            throw new Error("Invalid response from history data API for analysis");
+        }
 
         const numbers: string[] = [];
-        historicalDataResult.forEach((day: any) => {
-            if (day.morning && day.morning.number) {
-                numbers.push(day.morning.number);
-            }
-            if (day.evening && day.evening.number) {
-                numbers.push(day.evening.number);
-            }
-        });
+        if (Array.isArray(historicalDataResult)) {
+            historicalDataResult.forEach((day: any) => {
+                if (day.morning && day.morning.number) {
+                    numbers.push(day.morning.number);
+                }
+                if (day.evening && day.evening.number) {
+                    numbers.push(day.evening.number);
+                }
+            });
+        }
         
         if (numbers.length === 0) {
             return { success: false, error: "Not enough data for analysis." };
