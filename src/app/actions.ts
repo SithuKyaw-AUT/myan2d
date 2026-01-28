@@ -112,35 +112,44 @@ export async function getDailyResults() {
 
             const apiResponse = await response.json();
             
-            if (!apiResponse || apiResponse.result === "Not Found" || !Array.isArray(apiResponse.result)) {
-                // Return a valid empty structure for this date so the row still shows
-                return {
-                    date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
-                };
-            }
-            
             const dailyResult: DailyResult = {
                 date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
             };
 
-            apiResponse.result.forEach((session: any) => {
-                 const sessionResult: Result = {
-                    set: session.set,
-                    value: session.value,
-                    twoD: session.number,
-                };
-
-                if (session.time === '12:01') {
-                    dailyResult.s12_01 = sessionResult;
-                } else if (session.time === '16:30') {
-                    dailyResult.s16_30 = sessionResult;
+            if (!apiResponse || apiResponse.result === "Not Found" || !Array.isArray(apiResponse.result)) {
+                // Return a valid empty structure for this date so the row still shows
+                return dailyResult;
+            }
+            
+            const findResultForTime = (time: string): Result | undefined => {
+                const session = apiResponse.result.find((s: any) => s.time === time);
+                if (session) {
+                    return {
+                        set: session.set,
+                        value: session.value,
+                        twoD: session.number,
+                    };
                 }
-            });
+                return undefined;
+            }
+
+            const s12_01_result = findResultForTime('12:01');
+            const s16_30_result = findResultForTime('16:30');
+
+            // There is no 11:00 result from the API, so it will be empty.
+            dailyResult.s11_00 = undefined; 
+            dailyResult.s12_01 = s12_01_result;
+            // The 15:00 slot shows the most recent result before it, which is 12:01.
+            dailyResult.s15_00 = s12_01_result;
+            dailyResult.s16_30 = s16_30_result;
             
             return dailyResult;
         } catch (error) {
             console.error(`Error processing data for ${date.toDateString()}:`, error);
-            return null; // Return null if a single day fails
+            // Return a valid empty structure for this date so the row still shows
+             return {
+                date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
+            };
         }
     });
 
