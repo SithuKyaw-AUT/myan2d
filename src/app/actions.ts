@@ -70,13 +70,16 @@ function formatDateToDdMmYyyy(date: Date): string {
 export async function getDailyResults() {
   try {
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon...
+    today.setHours(0, 0, 0, 0);
 
     const datesToFetch: Date[] = [];
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon...
+
+    // Find the most recent Monday
     const monday = new Date(today);
-    // Go back to the most recent Monday
-    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    monday.setHours(0, 0, 0, 0); // Set to start of the day
+    const dayDiff = (dayOfWeek + 6) % 7; // 0 for Mon, 1 for Tue, ..., 6 for Sun
+    monday.setDate(today.getDate() - dayDiff);
+
 
     // Create an array of dates from Monday to today
     for (let i = 0; i < 7; i++) {
@@ -96,45 +99,49 @@ export async function getDailyResults() {
     }
 
     const dailyPromises = datesToFetch.map(async (date) => {
-        const formattedDate = formatDateToDdMmYyyy(date);
-        const response = await fetch(`https://api.thaistock2d.com/2d_result?date=${formattedDate}`, {
-            cache: 'no-store',
-        });
-        
-        if (!response.ok) {
-            console.error(`Failed to fetch data for ${formattedDate}: ${response.statusText}`);
-            return null; // Don't let one failed day stop the whole process
-        }
+        try {
+            const formattedDate = formatDateToDdMmYyyy(date);
+            const response = await fetch(`https://api.thaistock2d.com/2d_result?date=${formattedDate}`, {
+                cache: 'no-store',
+            });
+            
+            if (!response.ok) {
+                console.error(`Failed to fetch data for ${formattedDate}: ${response.statusText}`);
+                return null; // Don't let one failed day stop the whole process
+            }
 
-        const apiResponse = await response.json();
-        
-        // The API returns a message like { "result": "Not Found" } or an array
-        if (!apiResponse || apiResponse.result === "Not Found" || !Array.isArray(apiResponse.result)) {
-            // Return a valid empty structure for this date
-            return {
+            const apiResponse = await response.json();
+            
+            if (!apiResponse || apiResponse.result === "Not Found" || !Array.isArray(apiResponse.result)) {
+                // Return a valid empty structure for this date so the row still shows
+                return {
+                    date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
+                };
+            }
+            
+            const dailyResult: DailyResult = {
                 date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
             };
+
+            apiResponse.result.forEach((session: any) => {
+                 const sessionResult: Result = {
+                    set: session.set,
+                    value: session.value,
+                    twoD: session.number,
+                };
+
+                if (session.time === '12:01') {
+                    dailyResult.s12_01 = sessionResult;
+                } else if (session.time === '16:30') {
+                    dailyResult.s16_30 = sessionResult;
+                }
+            });
+            
+            return dailyResult;
+        } catch (error) {
+            console.error(`Error processing data for ${date.toDateString()}:`, error);
+            return null; // Return null if a single day fails
         }
-        
-        const dailyResult: DailyResult = {
-            date: date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
-        };
-
-        apiResponse.result.forEach((session: any) => {
-             const sessionResult: Result = {
-                set: session.set,
-                value: session.value,
-                twoD: session.number,
-            };
-
-            if (session.time === '12:01') {
-                dailyResult.s12_01 = sessionResult;
-            } else if (session.time === '16:30') {
-                dailyResult.s16_30 = sessionResult;
-            }
-        });
-        
-        return dailyResult;
     });
 
     const results = (await Promise.all(dailyPromises)).filter(Boolean) as DailyResult[];
