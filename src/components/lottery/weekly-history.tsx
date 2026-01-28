@@ -16,7 +16,21 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { History } from 'lucide-react';
-import type { DailyResult } from '@/app/types';
+import type { DailyResult, Result } from '@/app/types';
+
+function ResultCell({ result }: { result?: Result }) {
+  if (!result) {
+    return <span className="text-muted-foreground">--</span>;
+  }
+  return (
+    <div>
+      <p className="font-bold tracking-widest text-primary text-lg">{result.twoD}</p>
+      <p className="text-xs text-muted-foreground">SET: {result.set}</p>
+      <p className="text-xs text-muted-foreground">Value: {result.value}</p>
+    </div>
+  );
+}
+
 
 export default function WeeklyHistory({ data }: { data: DailyResult[] }) {
   return (
@@ -31,7 +45,7 @@ export default function WeeklyHistory({ data }: { data: DailyResult[] }) {
               Daily Results
             </CardTitle>
             <CardDescription>
-              Morning (12:00 PM MMT) and Evening (4:00 PM MMT) results.
+              Winning numbers for each session (MMT).
             </CardDescription>
           </div>
         </div>
@@ -40,9 +54,11 @@ export default function WeeklyHistory({ data }: { data: DailyResult[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Date</TableHead>
-              <TableHead>Morning</TableHead>
-              <TableHead>Evening</TableHead>
+              <TableHead className="w-[80px]">Date</TableHead>
+              <TableHead>11:00 AM</TableHead>
+              <TableHead>12:01 PM</TableHead>
+              <TableHead>3:00 PM</TableHead>
+              <TableHead>4:30 PM</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -51,33 +67,23 @@ export default function WeeklyHistory({ data }: { data: DailyResult[] }) {
                 <TableRow key={result.date}>
                   <TableCell className="font-medium">{result.date}</TableCell>
                   <TableCell>
-                    {result.morning ? (
-                        <div>
-                            <p className="font-bold tracking-widest text-primary text-lg">{result.morning.twoD}</p>
-                            <p className="text-xs text-muted-foreground">SET: {result.morning.set}</p>
-                            <p className="text-xs text-muted-foreground">Value: {result.morning.value}</p>
-                        </div>
-                    ) : (
-                        <span className="text-muted-foreground">--</span>
-                    )}
+                    <ResultCell result={result.s11_00} />
                   </TableCell>
                   <TableCell>
-                  {result.evening ? (
-                        <div>
-                            <p className="font-bold tracking-widest text-primary text-lg">{result.evening.twoD}</p>
-                            <p className="text-xs text-muted-foreground">SET: {result.evening.set}</p>
-                            <p className="text-xs text-muted-foreground">Value: {result.evening.value}</p>
-                        </div>
-                    ) : (
-                        <span className="text-muted-foreground">--</span>
-                    )}
+                    <ResultCell result={result.s12_01} />
+                  </TableCell>
+                  <TableCell>
+                    <ResultCell result={result.s15_00} />
+                  </TableCell>
+                  <TableCell>
+                    <ResultCell result={result.s16_30} />
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={3}
+                  colSpan={5}
                   className="py-10 text-center text-muted-foreground"
                 >
                   Could not fetch historical data.

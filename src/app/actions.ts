@@ -63,14 +63,16 @@ export async function getDailyResults() {
 
     const formattedData: DailyResult[] = results.map((res: any) => ({
       date: new Date(res.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
-      morning: res.morning
+      s11_00: undefined,
+      s12_01: res.morning
         ? {
             set: res.morning.set,
             value: res.morning.value,
             twoD: res.morning.number,
           }
         : undefined,
-      evening: res.evening
+      s15_00: undefined,
+      s16_30: res.evening
         ? {
             set: res.evening.set,
             value: res.evening.value,
