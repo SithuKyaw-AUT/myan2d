@@ -61,24 +61,23 @@ export async function getDailyResults() {
     }
     const results = (await response.json()) || [];
 
-    // Use UTC to avoid timezone-related issues on the server.
     const today = new Date();
-    const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-    
-    // In UTC, Sunday is 0, Monday is 1, ..., Saturday is 6
-    const dayOfWeek = todayUTC.getUTCDay();
-    
-    // Calculate days to subtract to get to the most recent Monday.
-    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    // Get Y, M, D from today's date in the server's local timezone.
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const date = today.getDate();
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon...
 
-    const startOfWeek = new Date(todayUTC);
-    startOfWeek.setUTCDate(todayUTC.getUTCDate() - daysToSubtract);
+    // Calculate the date of the most recent Monday. This is done in the server's timezone.
+    const mondayDate = new Date(year, month, date); // A clean date object for today at midnight.
+    mondayDate.setDate(mondayDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
 
     const thisWeeksResults = results.filter((res: any) => {
       if (!res.date) return false;
-      // API date 'YYYY-MM-DD' is parsed as UTC midnight, which is correct for comparison.
-      const resultDate = new Date(res.date);
-      return resultDate >= startOfWeek;
+      // API date 'YYYY-MM-DD' is parsed as UTC. Appending T00:00:00 makes it parse in local time.
+      // This ensures a correct comparison with mondayDate.
+      const resultDate = new Date(res.date + 'T00:00:00');
+      return resultDate >= mondayDate;
     });
 
     const formattedData: DailyResult[] = thisWeeksResults.map((res: any) => ({
