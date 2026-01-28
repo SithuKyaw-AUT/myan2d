@@ -1,76 +1,59 @@
-'use server';
 /**
- * @fileOverview Analyzes recent lottery number patterns using AI.
- *
- * - analyzeRecentNumberPatterns - A function that analyzes the lottery data for the last four weeks.
- * - AnalyzeRecentNumberPatternsInput - The input type for the analyzeRecentNumberPatterns function (currently empty).
- * - AnalyzeRecentNumberPatternsOutput - The return type for the analyzeRecentNumberPatterns function.
+ * @fileOverview Analyzes 2D number patterns from SET data and provides predictions.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-import { getHistoricalData } from '@/ai/flows/get-historical-data';
+import {z} from 'zod';
 
-const AnalyzeRecentNumberPatternsInputSchema = z.object({
-  sourceURL: z.string().optional().describe('An optional URL to a specific website for the AI to search for lottery results.'),
+export const AnalyzeSetPatternsInputSchema = z.object({
+  // The numbers are pre-calculated and passed in.
+  numbers: z.array(z.string().length(2)).describe('An array of 2D numbers from the last 4 weeks.'),
 });
-export type AnalyzeRecentNumberPatternsInput = z.infer<typeof AnalyzeRecentNumberPatternsInputSchema>;
+export type AnalyzeSetPatternsInput = z.infer<typeof AnalyzeSetPatternsInputSchema>;
 
-const AnalyzeRecentNumberPatternsOutputSchema = z.object({
-  analysis: z.string().describe('Analysis of lottery number patterns from the last four weeks.'),
-  numberFrequency: z.array(z.object({
-    number: z.string(),
-    count: z.number(),
-  })).describe('Frequency of each number in the last four weeks.'),
+export const AnalyzeSetPatternsOutputSchema = z.object({
+  analysis: z.string().describe('A detailed analysis of patterns like odd/even, serials, pairs, and digit frequency.'),
+  prediction: z.string().describe('A prediction for the next draw based on the analyzed patterns, with reasoning.'),
 });
-export type AnalyzeRecentNumberPatternsOutput = z.infer<typeof AnalyzeRecentNumberPatternsOutputSchema>;
+export type AnalyzeSetPatternsOutput = z.infer<typeof AnalyzeSetPatternsOutputSchema>;
 
-export async function analyzeRecentNumberPatterns(
-  input: AnalyzeRecentNumberPatternsInput
-): Promise<AnalyzeRecentNumberPatternsOutput> {
-  return analyzeRecentNumberPatternsFlow(input);
+export async function analyzeSetPatterns(
+  input: AnalyzeSetPatternsInput
+): Promise<AnalyzeSetPatternsOutput> {
+  return analyzeSetPatternsFlow(input);
 }
 
-const analyzeRecentNumberPatternsPrompt = ai.definePrompt({
-  name: 'analyzeRecentNumberPatternsPrompt',
-  input: {schema: z.object({ lotteryData: z.string() })},
-  output: {schema: z.object({ analysis: z.string().describe('Analysis of lottery number patterns from the last four weeks.') })},
-  prompt: `Analyze the lottery data from the last four weeks to identify number patterns.
-
-Provide insights into frequently drawn numbers and any other notable trends. Be concise.
-
-Lottery Data:
-{{{lotteryData}}}`,
-});
-
-const analyzeRecentNumberPatternsFlow = ai.defineFlow(
+const analyzeSetPatternsFlow = ai.defineFlow(
   {
-    name: 'analyzeRecentNumberPatternsFlow',
-    inputSchema: AnalyzeRecentNumberPatternsInputSchema,
-    outputSchema: AnalyzeRecentNumberPatternsOutputSchema,
+    name: 'analyzeSetPatternsFlow',
+    inputSchema: AnalyzeSetPatternsInputSchema,
+    outputSchema: AnalyzeSetPatternsOutputSchema,
   },
-  async input => {
-    // Fetch the last four weeks (28 days) of lottery data.
-    const historicalData = await getHistoricalData({ numDays: 28, sourceURL: input.sourceURL });
-    const lotteryNumbers = historicalData.results.map(r => r.number) || [];
-    
-    // Calculate frequency
-    const frequencyMap = lotteryNumbers.reduce((acc, num) => {
-      acc[num] = (acc[num] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+  async ({ numbers }) => {
+    const prompt = `You are a lottery analysis expert specializing in the Thai SET-based 2D lottery.
+Given the last 4 weeks of 2D numbers, perform a detailed analysis and make a prediction.
 
-    const numberFrequency = Object.entries(frequencyMap)
-      .map(([number, count]) => ({ number, count }))
-      .sort((a, b) => b.count - a.count);
+Data:
+${JSON.stringify(numbers)}
 
-    const {output} = await analyzeRecentNumberPatternsPrompt({
-      lotteryData: JSON.stringify(historicalData.results),
+Analysis:
+Please analyze the following patterns in the provided data:
+1.  **Odd vs. Even:** Frequency of odd and even numbers.
+2.  **Serial Numbers:** Frequency of consecutive numbers (e.g., 12, 45, 89).
+3.  **Paired Numbers (Doubles):** Frequency of identical digit pairs (e.g., 00, 11, 77).
+4.  **Digit Frequency:** How many times each digit (0-9) has appeared in total.
+5.  **High/Low:** Frequency of numbers in low range (00-49) vs high range (50-99).
+
+Prediction:
+Based on your complete analysis of all the patterns above, provide a prediction for the next draw.
+Explain your reasoning clearly, referencing the patterns you identified. Suggest a few numbers that have a high probability of appearing.
+`;
+
+    const { output } = await ai.generate({
+        prompt,
+        output: { schema: AnalyzeSetPatternsOutputSchema }
     });
-
-    return {
-      analysis: output!.analysis,
-      numberFrequency: numberFrequency,
-    };
+    
+    return output!;
   }
 );

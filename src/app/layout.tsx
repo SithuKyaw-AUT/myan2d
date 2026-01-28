@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'Myanmar 2D Lottery Tracker',
-  description: 'Track lottery results and get AI-powered insights.',
+  title: 'Myanmar 2D Live | SET Index Tracker & AI Analysis',
+  description: 'Live 2D numbers from the Thai Stock Exchange (SET), with daily results and AI-powered pattern analysis and predictions.',
 };
 
 export default function RootLayout({

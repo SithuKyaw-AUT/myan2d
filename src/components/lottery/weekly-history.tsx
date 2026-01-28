@@ -16,15 +16,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { History } from 'lucide-react';
+import type { DailyResult } from '@/app/types';
 
-type WeeklyData = {
-  id: string;
-  date: string;
-  time: string;
-  number: string;
-};
-
-export default function WeeklyHistory({ data }: { data: WeeklyData[] }) {
+export default function WeeklyHistory({ data }: { data: DailyResult[] }) {
   return (
     <Card>
       <CardHeader>
@@ -34,10 +28,10 @@ export default function WeeklyHistory({ data }: { data: WeeklyData[] }) {
           </div>
           <div>
             <CardTitle className="font-headline text-2xl">
-              This Week's History
+              Daily Results
             </CardTitle>
             <CardDescription>
-              Lottery results from Monday until now, fetched by AI.
+              Morning (12:30) and Evening (16:30) results for this week.
             </CardDescription>
           </div>
         </div>
@@ -46,19 +40,35 @@ export default function WeeklyHistory({ data }: { data: WeeklyData[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Time</TableHead>
-              <TableHead className="text-right">Number</TableHead>
+              <TableHead className="w-[100px]">Date</TableHead>
+              <TableHead>Morning</TableHead>
+              <TableHead>Evening</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.length > 0 ? (
               data.map((result) => (
-                <TableRow key={result.id}>
+                <TableRow key={result.date}>
                   <TableCell className="font-medium">{result.date}</TableCell>
-                  <TableCell>{result.time}</TableCell>
-                  <TableCell className="text-right font-bold tracking-widest text-primary">
-                    {result.number}
+                  <TableCell>
+                    {result.morning ? (
+                        <div>
+                            <p className="font-bold tracking-widest text-primary text-lg">{result.morning.twoD}</p>
+                            <p className="text-xs text-muted-foreground">SET: {result.morning.set}</p>
+                        </div>
+                    ) : (
+                        <span className="text-muted-foreground">--</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                  {result.evening ? (
+                        <div>
+                            <p className="font-bold tracking-widest text-primary text-lg">{result.evening.twoD}</p>
+                            <p className="text-xs text-muted-foreground">SET: {result.evening.set}</p>
+                        </div>
+                    ) : (
+                        <span className="text-muted-foreground">--</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -68,7 +78,7 @@ export default function WeeklyHistory({ data }: { data: WeeklyData[] }) {
                   colSpan={3}
                   className="py-10 text-center text-muted-foreground"
                 >
-                  Could not fetch data for this week.
+                  Could not fetch historical data.
                 </TableCell>
               </TableRow>
             )}
