@@ -29,6 +29,7 @@ export async function handleUpdate() {
         success: true,
         message:
           result.message || 'Data update process initiated successfully.',
+        number: result.number,
       };
     } else {
       return {

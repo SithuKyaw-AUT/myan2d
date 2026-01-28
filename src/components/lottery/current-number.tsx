@@ -20,24 +20,31 @@ export default function CurrentNumber() {
   const [currentNumber, setCurrentNumber] = useState<string>('--');
 
   useEffect(() => {
-    // Set initial random number on client mount to avoid hydration mismatch
-    setCurrentNumber(Math.floor(Math.random() * 100).toString().padStart(2, '0'));
+    // Generate a consistent number for the current day to avoid random changes on reload
+    const getDailyNumber = () => {
+      const today = new Date();
+      // Simple pseudo-random number generator based on the date
+      const seed =
+        today.getFullYear() * 1000 +
+        today.getMonth() * 100 +
+        today.getDate();
+      const x = Math.sin(seed) * 10000;
+      return Math.floor((x - Math.floor(x)) * 100)
+        .toString()
+        .padStart(2, '0');
+    };
+    setCurrentNumber(getDailyNumber());
   }, []);
 
   const onUpdate = () => {
     startTransition(async () => {
       const result = await handleUpdate();
-      if (result.success) {
+      if (result.success && result.number) {
         toast({
-          title: 'Update Initiated',
+          title: 'Update Successful',
           description: result.message,
         });
-        // Simulate fetching a new number for demonstration
-        setCurrentNumber(
-          Math.floor(Math.random() * 100)
-            .toString()
-            .padStart(2, '0')
-        );
+        setCurrentNumber(result.number);
       } else {
         toast({
           variant: 'destructive',
@@ -51,7 +58,9 @@ export default function CurrentNumber() {
   return (
     <Card className="w-full overflow-hidden text-center">
       <CardHeader>
-        <CardTitle className="font-headline text-2xl">Today's 2D Number</CardTitle>
+        <CardTitle className="font-headline text-2xl">
+          Today's 2D Number
+        </CardTitle>
         <CardDescription>The most recent official result.</CardDescription>
       </CardHeader>
       <CardContent>

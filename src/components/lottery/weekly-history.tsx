@@ -26,6 +26,17 @@ type WeeklyData = {
   number: string;
 };
 
+// Generate a consistent, pseudo-random number for a given day and time
+const getStableNumberForDay = (day: Date, time: 'morning' | 'evening') => {
+  // Simple pseudo-random number generator based on the date and time
+  const seed = day.getTime() + (time === 'morning' ? 0 : 1);
+  const x = Math.sin(seed) * 10000;
+  const random = x - Math.floor(x);
+  return Math.floor(random * 100)
+    .toString()
+    .padStart(2, '0');
+};
+
 export default function WeeklyHistory() {
   const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
 
@@ -58,9 +69,7 @@ export default function WeeklyHistory() {
             id: `morning-${format(day, 'yyyy-MM-dd')}`,
             date: format(day, 'EEE, MMM d'),
             time: '12:01 PM',
-            number: Math.floor(Math.random() * 100)
-              .toString()
-              .padStart(2, '0'),
+            number: getStableNumberForDay(day, 'morning'),
           });
         }
 
@@ -69,9 +78,7 @@ export default function WeeklyHistory() {
             id: `evening-${format(day, 'yyyy-MM-dd')}`,
             date: format(day, 'EEE, MMM d'),
             time: '04:31 PM',
-            number: Math.floor(Math.random() * 100)
-              .toString()
-              .padStart(2, '0'),
+            number: getStableNumberForDay(day, 'evening'),
           });
         }
 

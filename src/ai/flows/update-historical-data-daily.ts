@@ -19,6 +19,7 @@ export type UpdateHistoricalDataDailyInput = z.infer<typeof UpdateHistoricalData
 const UpdateHistoricalDataDailyOutputSchema = z.object({
   success: z.boolean().describe('Indicates whether the data update was successful.'),
   message: z.string().optional().describe('Optional message providing additional information about the update process.'),
+  number: z.string().optional().describe('The fetched lottery number.'),
 });
 export type UpdateHistoricalDataDailyOutput = z.infer<typeof UpdateHistoricalDataDailyOutputSchema>;
 
@@ -31,7 +32,7 @@ export async function updateHistoricalDataDaily(input: UpdateHistoricalDataDaily
 const searchLotteryResultsPrompt = ai.definePrompt({
   name: 'searchLotteryResultsPrompt',
   prompt: `Find the latest 2D lottery results for Myanmar, today's date is {{{currentDate}}}. Provide the result in JSON format with a key called \"number\" that is a string.`,
-  output: z.object({number: z.string()})
+  output: {schema: z.object({number: z.string()})}
 });
 
 // Define the Genkit flow to update historical data daily
@@ -47,14 +48,17 @@ const updateHistoricalDataDailyFlow = ai.defineFlow(
       const lotteryResult = await searchLotteryResultsPrompt({
         currentDate,
       });
+      
+      const number = lotteryResult.output?.number;
 
       // TODO: Implement Firestore database saving logic here.
       // This placeholder demonstrates where you would save the lotteryResult.number to Firestore.
-      console.log(`Lottery Number from AI: ${lotteryResult.output?.number}`);
+      console.log(`Lottery Number from AI: ${number}`);
 
       return {
         success: true,
         message: 'Successfully retrieved lottery data.  Database saving not yet implemented.',
+        number: number,
       };
     } catch (error: any) {
       console.error('Error updating historical data:', error);
