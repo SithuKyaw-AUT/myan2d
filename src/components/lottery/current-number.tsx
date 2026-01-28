@@ -1,16 +1,13 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { RefreshCw, Loader2 } from 'lucide-react';
 import { getLiveSetData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
@@ -29,24 +26,30 @@ export default function CurrentNumber() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
 
-  const fetchData = () => {
-    startTransition(async () => {
-      if (!isLoading) setIsLoading(true);
-      const result = await getLiveSetData();
-      if (result.success && result.data) {
-        setLiveData(result.data);
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Update Failed',
-          description: result.error,
-        });
-      }
-      setIsLoading(false);
-    });
-  };
-
   useEffect(() => {
+    const fetchData = () => {
+      startTransition(async () => {
+        const result = await getLiveSetData();
+        if (result.success && result.data) {
+          setLiveData(result.data);
+        } else {
+          // On failure, only show a toast if it's the initial load.
+          // Background refresh failures will be silent to avoid bothering the user.
+          if (!liveData) {
+            toast({
+              variant: 'destructive',
+              title: 'Update Failed',
+              description: result.error,
+            });
+          }
+        }
+        // This will only be true on the first run.
+        if (isLoading) {
+            setIsLoading(false);
+        }
+      });
+    };
+
     const timer = setInterval(() => {
         const time = new Date().toLocaleTimeString('en-US', {
             timeZone: 'Asia/Yangon',
@@ -59,13 +62,14 @@ export default function CurrentNumber() {
     }, 1000);
 
     fetchData();
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchData, 5 * 60 * 1000); 
+    // Refresh every minute to get live data.
+    const interval = setInterval(fetchData, 60 * 1000); 
     
     return () => {
         clearInterval(timer);
         clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -78,8 +82,8 @@ export default function CurrentNumber() {
             {currentTime ? `Live from the Thai SET Index | ${currentTime}` : 'Live from the Thai SET Index'}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {isLoading && !liveData ? (
+      <CardContent className="p-6">
+        {isLoading ? (
              <div className="space-y-4">
                 <Skeleton className="mx-auto h-24 w-40" />
                 <Skeleton className="mx-auto h-6 w-1/2" />
@@ -101,18 +105,7 @@ export default function CurrentNumber() {
         ) : (
             <p className="text-destructive">Could not load live data.</p>
         )}
-
       </CardContent>
-      <CardFooter className="flex justify-center bg-muted/50 p-4">
-        <Button onClick={fetchData} disabled={isPending}>
-          {isPending ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
-          )}
-          {isPending ? 'Refreshing...' : "Refresh Live Data"}
-        </Button>
-      </CardFooter>
     </Card>
   );
 }
