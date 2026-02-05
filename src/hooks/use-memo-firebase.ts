@@ -1,40 +1,50 @@
 'use client';
 
-import { useMemo, type DependencyList } from 'react';
+import { useMemo, useRef, type DependencyList } from 'react';
 import { isEqual } from 'lodash';
-import { queryEqual, refEqual } from 'firebase/firestore';
+import { queryEqual, refEqual, type Query, type DocumentReference } from 'firebase/firestore';
 
-// Custom deep comparison hook for memoizing Firebase queries and references.
-// Standard useMemo uses Object.is for comparison, which won't work for
-// complex objects like Firebase queries that are recreated on each render.
-function useDeepCompareMemoize(value: DependencyList) {
-  const ref = React.useRef<DependencyList>([]);
+function useDeepCompareMemo(value: DependencyList): DependencyList {
+  const ref = useRef<DependencyList>();
 
-  if (
-    !value.every((item, i) => {
-      const prevItem = ref.current[i];
-      if (item && typeof item === 'object' && 'isEqual' in item && typeof item.isEqual === 'function') {
-        return item.isEqual(prevItem);
-      }
-      if (item && typeof item === 'object' && '_query' in item) { // This is a Query
-        return prevItem && queryEqual(item as any, prevItem as any);
-      }
-       if (item && typeof item === 'object' && 'path' in item) { // This is a DocumentReference
-        return prevItem && refEqual(item as any, prevItem as any);
-      }
-      return isEqual(item, prevItem);
-    })
-  ) {
+  if (!deepCompareEquals(value, ref.current)) {
     ref.current = value;
   }
 
-  return ref.current;
+  return ref.current!;
 }
+
+function deepCompareEquals(a: DependencyList | undefined, b: DependencyList | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+
+  return a.every((dep, i) => {
+    const otherDep = b[i];
+
+    if (dep === otherDep) return true;
+    if (dep === null || otherDep === null) return false;
+
+
+    // Firestore Query check
+    if (typeof dep === 'object' && '_query' in dep) {
+      return typeof otherDep === 'object' && '_query' in otherDep && queryEqual(dep as Query, otherDep as Query);
+    }
+    // Firestore DocumentReference check
+    if (typeof dep === 'object' && 'path' in dep) {
+      return typeof otherDep === 'object' && 'path' in otherDep && refEqual(dep as DocumentReference, otherDep as DocumentReference);
+    }
+
+    // Generic deep equality check
+    return isEqual(dep, otherDep);
+  });
+}
+
 
 export function useMemoFirebase<T>(
   factory: () => T,
   deps: DependencyList | undefined
 ): T {
+  const memoizedDeps = useDeepCompareMemo(deps || []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(factory, useDeepCompareMemoize(deps || []));
+  return useMemo(factory, memoizedDeps);
 }
