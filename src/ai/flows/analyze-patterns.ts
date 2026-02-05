@@ -6,13 +6,13 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 
-export const AnalyzeSetPatternsInputSchema = z.object({
+const AnalyzeSetPatternsInputSchema = z.object({
   // The numbers are pre-calculated and passed in.
   numbers: z.array(z.string().length(2)).describe('An array of 2D numbers from the historical data.'),
 });
 export type AnalyzeSetPatternsInput = z.infer<typeof AnalyzeSetPatternsInputSchema>;
 
-export const AnalyzeSetPatternsOutputSchema = z.object({
+const AnalyzeSetPatternsOutputSchema = z.object({
   analysis: z.string().describe('A detailed analysis of patterns like odd/even, serials, pairs, and digit frequency.'),
   prediction: z.string().describe('A prediction for the next draw based on the analyzed patterns, with reasoning.'),
 });
