@@ -1,13 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /lotteryResults/{date} {
-      // Data is public
-      allow read: if true;
-      
-      // For this example, writes are open. 
-      // In a production app, you would restrict this to authenticated users or a backend service.
-      allow write: if true; 
+    match /lotteryResults/{document=**} {
+      // Data is public and writes are open for this example.
+      // In a production app, you would restrict writes.
+      allow read, write: if true;
     }
   }
 }

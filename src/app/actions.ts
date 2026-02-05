@@ -1,9 +1,8 @@
 'use server';
 
-import { analyzeSetPatterns, type AnalyzeSetPatternsInput } from '@/ai/flows/analyze-patterns';
-import { getFirestore, collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { analyzeSetPatterns } from '@/ai/flows/analyze-patterns';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import { formatDateToYyyyMmDd } from '@/lib/firebase/utils';
 import type { DailyResult } from './types';
 
 
@@ -56,60 +55,6 @@ export async function getLiveSetData() {
       error: error.message || 'Failed to fetch live SET data.',
     };
   }
-}
-
-export async function populateFirestoreFromApi() {
-    try {
-        const { firestore } = initializeFirebase();
-        const response = await fetch('https://api.thaistock2d.com/history', { cache: 'no-store' });
-        if (!response.ok) throw new Error(`API request failed: ${response.statusText}`);
-        
-        const responseText = await response.text();
-        let history;
-        try {
-            history = JSON.parse(responseText);
-        } catch (error) {
-            console.error('Error parsing history data JSON:', error);
-            throw new Error("Invalid response from history data API");
-        }
-
-        if (!Array.isArray(history)) throw new Error('Invalid data format from history API.');
-
-        const batch = writeBatch(firestore);
-        let count = 0;
-
-        history.forEach((day: any) => {
-          if (day.date && (day.morning || day.evening)) {
-            const date = new Date(day.date);
-            const docId = formatDateToYyyyMmDd(date);
-            const docRef = doc(firestore, 'lotteryResults', docId);
-
-            const dailyData: Partial<DailyResult> = { date: docId };
-
-            if (day.morning && day.morning.number) {
-              const morningResult = { set: day.morning.set, value: day.morning.value, twoD: day.morning.number };
-              dailyData.s12_01 = morningResult;
-              dailyData.s15_00 = morningResult; 
-            }
-            if (day.evening && day.evening.number) {
-              dailyData.s16_30 = { set: day.evening.set, value: day.evening.value, twoD: day.evening.number };
-            }
-            
-            batch.set(docRef, dailyData, { merge: true });
-            count++;
-          }
-        });
-
-        if (count > 0) {
-          await batch.commit();
-          return { success: true, message: `${count} days of historical data have been saved.` };
-        } else {
-          return { success: false, error: 'No historical data found to import.' };
-        }
-      } catch (error: any) {
-        console.error("Firestore population error:", error);
-        return { success: false, error: error.message || 'An unknown error occurred during import.' };
-      }
 }
 
 export async function handleAnalysis() {
