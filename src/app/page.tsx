@@ -1,8 +1,8 @@
-import Header from '@/components/layout/Header';
+import Header from '@/components/layout/header';
 import LiveNumber from '@/components/lottery/LiveNumber';
 import HistoricalTable from '@/components/lottery/HistoricalTable';
 import AiAnalysis from '@/components/lottery/AiAnalysis';
-import FirestoreManager from '@/components/lottery/FirestoreManager';
+import FirestoreManager from '@/components/lottery/firestore-manager';
 
 export default function Home() {
   return (
