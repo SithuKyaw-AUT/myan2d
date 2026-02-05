@@ -34,7 +34,16 @@ export default function FirestoreManager() {
           throw new Error(`API request failed: ${response.statusText}`);
         }
         
-        const history = await response.json();
+        const responseText = await response.text();
+        let history;
+        try {
+            history = JSON.parse(responseText);
+        } catch (error) {
+            console.error('Error parsing history data JSON:', error);
+            console.error('Received non-JSON response:', responseText);
+            throw new Error("Invalid response from history data API");
+        }
+
         if (!Array.isArray(history)) {
           throw new Error('Invalid data format from history API.');
         }
