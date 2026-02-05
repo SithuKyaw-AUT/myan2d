@@ -11,6 +11,12 @@ import {
 import { getLiveSetData } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
+import { useFirestore } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { formatDateToYyyyMmDd } from '@/lib/firebase/utils';
+import type { Result } from '@/app/types';
 
 type LiveData = {
     setIndex: string;
@@ -19,12 +25,61 @@ type LiveData = {
     lastUpdated: string;
 }
 
+const RESULT_TIMES = ['12:01 PM', '04:30 PM'];
+
 export default function CurrentNumber() {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const [liveData, setLiveData] = useState<LiveData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
+  const { firestore } = useFirestore();
+
+  const handleWriteToFirestore = (time: string, result: LiveData) => {
+    if (!firestore) return;
+
+    const today = new Date();
+    const docId = formatDateToYyyyMmDd(today);
+    const docRef = doc(firestore, 'lotteryResults', docId);
+
+    const resultData: Result = {
+      set: result.setIndex,
+      value: result.value,
+      twoD: result.twoD,
+    };
+    
+    let fieldToUpdate = {};
+    if (time.startsWith('12:01')) {
+      fieldToUpdate = { s12_01: resultData, s15_00: resultData };
+    } else if (time.startsWith('04:30')) {
+      fieldToUpdate = { s16_30: resultData };
+    } else {
+      return; // Not a result time
+    }
+
+    const dataToWrite = {
+      date: docId,
+      ...fieldToUpdate
+    };
+
+    console.log(`Writing to Firestore for ${time}`, dataToWrite);
+
+    setDoc(docRef, dataToWrite, { merge: true })
+      .then(() => {
+        toast({
+          title: 'Result Saved!',
+          description: `Today's ${time} result (${result.twoD}) has been saved to Firestore.`,
+        });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: dataToWrite,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+  };
 
   useEffect(() => {
     const fetchData = () => {
@@ -32,9 +87,20 @@ export default function CurrentNumber() {
         const result = await getLiveSetData();
         if (result.success && result.data) {
           setLiveData(result.data);
+          
+          const mmtTime = new Date().toLocaleTimeString('en-US', {
+              timeZone: 'Asia/Yangon',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true,
+          });
+
+          // Check if the current time matches one of the result times
+          if (RESULT_TIMES.some(rt => mmtTime.startsWith(rt.substring(0,5)))) {
+             handleWriteToFirestore(mmtTime, result.data);
+          }
         } else {
-          // On failure, only show a toast if it's the initial load.
-          // Background refresh failures will be silent to avoid bothering the user.
           if (!liveData) {
             toast({
               variant: 'destructive',
@@ -43,7 +109,6 @@ export default function CurrentNumber() {
             });
           }
         }
-        // This will only be true on the first run.
         if (isLoading) {
             setIsLoading(false);
         }
@@ -62,7 +127,6 @@ export default function CurrentNumber() {
     }, 1000);
 
     fetchData();
-    // Refresh every 10 seconds for a near real-time experience.
     const interval = setInterval(fetchData, 10 * 1000); 
     
     return () => {

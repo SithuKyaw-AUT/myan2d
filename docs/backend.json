@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "lotteryResult": {
+      "title": "Lottery Result",
+      "description": "Stores the 2D lottery results for a single day.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "The date of the results in YYYY-MM-DD format."
+        },
+        "s11_00": {
+          "$ref": "#/entities/result"
+        },
+        "s12_01": {
+          "$ref": "#/entities/result"
+        },
+        "s15_00": {
+          "$ref": "#/entities/result"
+        },
+        "s16_30": {
+          "$ref": "#/entities/result"
+        }
+      }
+    },
+    "result": {
+      "title": "Single Result",
+      "description": "A single lottery result.",
+      "type": "object",
+      "properties": {
+        "set": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "twoD": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "auth": {
+    "providers": []
+  },
+  "firestore": {
+    "/lotteryResults/{date}": {
+      "schema": {
+        "$ref": "#/entities/lotteryResult"
+      },
+      "description": "A collection of daily lottery results, where the document ID is the date in YYYY-MM-DD format."
+    }
+  }
+}
