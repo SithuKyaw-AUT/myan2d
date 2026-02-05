@@ -26,24 +26,24 @@ type LiveData = {
 }
 
 // Times are in MMT (Myanmar Time)
-const RESULT_TIMES = {
+const RESULT_TIMES: Record<string, string> = {
     '12:01': 's12_01',
-    '04:30': 's16_30',
+    '16:30': 's16_30',
 };
 
-const COPY_TIMES = {
+const COPY_TIMES: Record<string, string> = {
     '12:01': 's15_00',
 };
 
 export default function LiveNumber() {
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const { toast } = useToast();
   const [liveData, setLiveData] = useState<LiveData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
   const { firestore } = useFirestore();
 
-  const handleWriteToFirestore = (timeKey: keyof typeof RESULT_TIMES, result: LiveData) => {
+  const handleWriteToFirestore = (timeKey: string, result: LiveData) => {
     if (!firestore) return;
 
     const today = new Date();
@@ -62,9 +62,8 @@ export default function LiveNumber() {
       [fieldToUpdate]: resultData
     };
     
-    // If there's a time to copy this result to
     if (COPY_TIMES[timeKey]) {
-        const copyField = COPY_TIMES[timeKey as keyof typeof COPY_TIMES];
+        const copyField = COPY_TIMES[timeKey];
         dataToWrite[copyField] = resultData;
     }
 
@@ -90,6 +89,7 @@ export default function LiveNumber() {
       startTransition(async () => {
         const result = await getLiveSetData();
         if (result.success && result.data) {
+          const previousTwoD = liveData?.twoD;
           setLiveData(result.data);
           
           const mmtTime = new Date().toLocaleTimeString('en-US', {
@@ -99,12 +99,14 @@ export default function LiveNumber() {
               hour12: false, // 24-hour format
           });
           
-          // Check if current time matches a result time
-          for (const timeKey in RESULT_TIMES) {
-              if (mmtTime.startsWith(timeKey)) {
-                  handleWriteToFirestore(timeKey as keyof typeof RESULT_TIMES, result.data);
-                  break;
-              }
+          // Check if it's a result time AND the number has changed
+          if (result.data.twoD !== previousTwoD) {
+            for (const timeKey in RESULT_TIMES) {
+                if (mmtTime.startsWith(timeKey)) {
+                    handleWriteToFirestore(timeKey, result.data);
+                    break;
+                }
+            }
           }
 
         } else if (result.error && !liveData) {
@@ -142,7 +144,7 @@ export default function LiveNumber() {
   }, []);
 
   return (
-    <Card className="w-full overflow-hidden text-center">
+    <Card className="w-full overflow-hidden text-center h-full">
       <CardHeader>
         <CardTitle className="font-headline text-2xl">
           Live 2D Number

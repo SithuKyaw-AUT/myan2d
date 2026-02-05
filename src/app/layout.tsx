@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'Myanmar 2D Live | SET Index Tracker & AI Analysis',
+  title: 'mm2D | Live 2D & AI Analysis',
   description: 'Live 2D numbers from the Thai Stock Exchange (SET), with daily results and AI-powered pattern analysis and predictions.',
 };
 
@@ -23,7 +23,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
           rel="stylesheet"
         />
       </head>

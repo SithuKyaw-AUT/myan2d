@@ -15,7 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { History } from 'lucide-react';
 import type { DailyResult } from '@/app/types';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, limit, orderBy } from 'firebase/firestore';
@@ -37,7 +36,7 @@ export default function HistoricalTable() {
     return query(
       collection(firestore, 'lotteryResults'),
       orderBy('date', 'desc'),
-      limit(20) // Fetch last 20 results
+      limit(7) // Display last 7 days
     );
   }, [firestore]);
 
@@ -78,18 +77,14 @@ export default function HistoricalTable() {
   }
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
-        <div className="flex items-center gap-4">
-          <div>
-            <CardTitle className="font-headline text-2xl">
-              Daily Results
-            </CardTitle>
-            <CardDescription>
-              Recent winning numbers from Firestore.
-            </CardDescription>
-          </div>
-        </div>
+        <CardTitle className="font-headline text-2xl">
+          Daily Results
+        </CardTitle>
+        <CardDescription>
+          Recent winning numbers from Firestore.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

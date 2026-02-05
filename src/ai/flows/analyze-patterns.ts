@@ -1,5 +1,6 @@
+'use server';
 /**
- * @fileOverview Analyzes 2D number patterns from SET data and provides predictions.
+ * @fileOverview Analyzes 2D number patterns from historical data and provides predictions.
  */
 
 import {ai} from '@/ai/genkit';
@@ -7,7 +8,7 @@ import {z} from 'zod';
 
 export const AnalyzeSetPatternsInputSchema = z.object({
   // The numbers are pre-calculated and passed in.
-  numbers: z.array(z.string().length(2)).describe('An array of 2D numbers from the last 4 weeks.'),
+  numbers: z.array(z.string().length(2)).describe('An array of 2D numbers from the historical data.'),
 });
 export type AnalyzeSetPatternsInput = z.infer<typeof AnalyzeSetPatternsInputSchema>;
 
@@ -31,10 +32,10 @@ const analyzeSetPatternsFlow = ai.defineFlow(
   },
   async ({ numbers }) => {
     const prompt = `You are a lottery analysis expert specializing in the Thai SET-based 2D lottery.
-Given the last 4 weeks of 2D numbers, perform a detailed analysis and make a prediction.
+Given the historical 2D numbers, perform a detailed analysis and make a prediction.
 
 Data:
-${JSON.stringify(numbers)}
+${JSON.stringify(numbers.slice(-200))} // Use last 200 numbers for analysis to keep it relevant
 
 Analysis:
 Please analyze the following patterns in the provided data:
