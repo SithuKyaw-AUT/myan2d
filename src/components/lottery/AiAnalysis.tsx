@@ -35,6 +35,7 @@ import { handleAnalysis } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { Separator } from '../ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 // Define the types for the structured analysis data
 type AnalysisResult = {
@@ -61,14 +62,23 @@ export default function AiAnalysis() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
     null
   );
+  const [isFromCache, setIsFromCache] = useState(false);
 
   const onAnalyze = () => {
-    setAnalysisResult(null);
+    setIsFromCache(false);
     startTransition(async () => {
       const result = await handleAnalysis();
       if (result.success && result.result) {
         setAnalysisResult(result.result as AnalysisResult);
+        if (result.fromCache) {
+            setIsFromCache(true);
+            toast({
+                title: 'Loaded from Cache',
+                description: 'Analysis results are up-to-date.',
+            });
+        }
       } else {
+        setAnalysisResult(null);
         toast({
           variant: 'destructive',
           title: 'Analysis Failed',
@@ -99,18 +109,24 @@ export default function AiAnalysis() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 rounded-lg bg-primary/10 p-3">
-            <BrainCircuit className="h-8 w-8 text-primary" />
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-shrink-0 rounded-lg bg-primary/10 p-3">
+              <BrainCircuit className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="font-headline text-2xl">
+                AI Analysis Dashboard
+              </CardTitle>
+              <CardDescription>
+                A visual breakdown of patterns and predictions from historical
+                data.
+              </CardDescription>
+            </div>
           </div>
-          <div>
-            <CardTitle className="font-headline text-2xl">
-              AI Analysis Dashboard
-            </CardTitle>
-            <CardDescription>
-              A visual breakdown of patterns and predictions from historical data.
-            </CardDescription>
-          </div>
+          {analysisResult && isFromCache && (
+            <Badge variant="secondary" className="whitespace-nowrap">Loaded from Cache</Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent>{renderContent()}</CardContent>

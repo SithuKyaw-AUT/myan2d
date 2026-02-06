@@ -2,8 +2,35 @@
 
 import { analyzeSetPatterns } from '@/ai/flows/analyze-patterns';
 import { historicalData } from '@/lib/historical-data';
-import type { DailyResult } from './types';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { createHash } from 'crypto';
 
+const CACHE_PATH = path.join(process.cwd(), 'src', 'lib', 'analysis-cache.json');
+
+type AnalysisCache = {
+    dataHash: string;
+    analysisResult: any;
+};
+
+async function getAnalysisCache(): Promise<AnalysisCache | null> {
+    try {
+        await fs.access(CACHE_PATH);
+        const fileContent = await fs.readFile(CACHE_PATH, 'utf-8');
+        if (fileContent.trim() === '') return null;
+        return JSON.parse(fileContent);
+    } catch (error) {
+        return null;
+    }
+}
+
+async function setAnalysisCache(data: AnalysisCache) {
+    try {
+        await fs.writeFile(CACHE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (error) {
+        console.error('Failed to write analysis cache:', error);
+    }
+}
 
 function get2DNumber(setIndex: string, setValue: string): string {
     const cleanSetIndex = setIndex.replace(/,/g, '');
@@ -75,10 +102,29 @@ export async function handleAnalysis() {
             return { success: false, error: "Not enough data in local file for analysis." };
         }
         
+        const dataString = JSON.stringify(historicalData);
+        const currentDataHash = createHash('sha256').update(dataString).digest('hex');
+
+        const cache = await getAnalysisCache();
+        if (cache && cache.dataHash === currentDataHash && cache.analysisResult) {
+            return {
+                success: true,
+                result: cache.analysisResult,
+                fromCache: true,
+            };
+        }
+        
         const analysisResult = await analyzeSetPatterns({ numbers });
+        
+        await setAnalysisCache({
+            dataHash: currentDataHash,
+            analysisResult: analysisResult,
+        });
+
         return {
             success: true,
             result: analysisResult,
+            fromCache: false,
         };
 
     } catch (error: any) {
