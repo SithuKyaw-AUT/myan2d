@@ -49,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table';
-import { AnalyzePatternsOutput, AnalyzePatternsInput } from '@/ai/flows/analyze-patterns';
+import { AnalyzePatternsOutput, AnalyzePatternsInput } from '@/app/actions';
 
 
 export default function AiAnalysis() {
@@ -324,13 +324,13 @@ const AnalysisDashboard = ({ data }: { data: AnalyzePatternsOutput }) => {
                     <BarChart accessibilityLayer data={chartData} margin={{ top: 20 }}>
                         <CartesianGrid vertical={false} />
                         <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} />
-                        <YAxis tickFormatter={(value) => `${value}%`} />
+                        <YAxis tickFormatter={(value) => `${value.toFixed(0)}%`} />
                         <ChartTooltip
                         cursor={false}
                         content={<ChartTooltipContent indicator="dot" />}
                         />
                         <Bar dataKey="Hit Rate" radius={4}>
-                            <LabelList position="top" offset={4} className="fill-foreground" fontSize={12} formatter={(value: number) => `${value}%`} />
+                            <LabelList position="top" offset={4} className="fill-foreground" fontSize={12} formatter={(value: number) => `${value.toFixed(1)}%`} />
                              {chartData.map((entry) => (
                                 <Cell key={`cell-${entry.name}`} fill={entry.fill} />
                             ))}
