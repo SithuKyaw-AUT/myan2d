@@ -151,7 +151,7 @@ Based on BOTH stages, provide a concise, one-paragraph prediction for the next d
     const { output } = await ai.generate({
         prompt,
         output: { schema: AnalyzePatternsOutputSchema },
-        model: 'googleai/gemini-2.5-pro', // Using a more powerful model for this complex task
+        model: 'googleai/gemini-pro',
     });
     
     return output!;
