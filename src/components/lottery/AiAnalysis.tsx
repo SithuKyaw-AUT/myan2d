@@ -49,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table';
-import { AnalyzePatternsOutput, AnalyzePatternsInput } from '@/app/actions';
+import type { AnalyzePatternsOutput, AnalyzePatternsInput } from '@/app/analysis-types';
 
 
 export default function AiAnalysis() {
