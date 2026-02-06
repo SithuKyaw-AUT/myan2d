@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect, useCallback, useRef } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -9,14 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { getLiveSetData } from '@/app/actions';
-import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
-import { useFirestore } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { formatDateToYyyyMmDd } from '@/lib/firebase/utils';
-import type { Result } from '@/app/types';
 
 type LiveData = {
     setIndex: string;
@@ -24,17 +17,6 @@ type LiveData = {
     twoD: string;
     lastUpdated: string;
 }
-
-// Times are in MMT (Myanmar Time)
-const RESULT_TIMES: Record<string, string> = {
-    '11:00': 's11_00',
-    '12:01': 's12_01',
-    '16:30': 's16_30',
-};
-
-const COPY_TIMES: Record<string, string> = {
-    '12:01': 's15_00',
-};
 
 const FAST_POLL_INTERVAL = 10 * 1000; // 10 seconds
 const NORMAL_POLL_INTERVAL = 60 * 1000; // 1 minute
@@ -55,6 +37,12 @@ function getPollingInterval(): number | null {
         return null;
     }
 
+    const RESULT_TIMES: Record<string, string> = {
+        '11:00': 's11_00',
+        '12:01': 's12_01',
+        '16:30': 's16_30',
+    };
+
     // Fast polling window: 5 minutes before and 2 minutes after each result time
     const isNearResultTime = Object.keys(RESULT_TIMES).some(timeStr => {
         const [resHour, resMinute] = timeStr.split(':').map(Number);
@@ -73,58 +61,9 @@ function getPollingInterval(): number | null {
 
 export default function LiveNumber() {
   const [, startTransition] = useTransition();
-  const { toast } = useToast();
   const [liveData, setLiveData] = useState<LiveData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
-  const  firestore  = useFirestore();
-  const previousTwoDRef = useRef<string | undefined>();
-
-  const handleWriteToFirestore = useCallback((timeKey: string, result: LiveData) => {
-    if (!firestore) return;
-
-    const today = new Date();
-    const docId = formatDateToYyyyMmDd(today);
-    const docRef = doc(firestore, 'lottery_results', docId);
-
-    const resultData: Result = {
-      set: result.setIndex,
-      value: result.value,
-      twoD: result.twoD,
-    };
-    
-    const fieldToUpdate = RESULT_TIMES[timeKey];
-    const dataToWrite: any = {
-      date: docId,
-      [fieldToUpdate]: resultData
-    };
-
-    if (COPY_TIMES[timeKey]) {
-        const copyField = COPY_TIMES[timeKey as keyof typeof COPY_TIMES];
-        dataToWrite[copyField] = resultData;
-    }
-
-    setDoc(docRef, dataToWrite, { merge: true })
-      .then(() => {
-        let description = `Today's ${timeKey} result (${result.twoD}) has been saved.`;
-         if (COPY_TIMES[timeKey]) {
-          description = `Results for 12:01 and 15:00 (${result.twoD}) have been saved.`;
-        }
-        toast({
-          title: 'Result Saved!',
-          description: description,
-        });
-        errorEmitter.emit('new-result-saved');
-      })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'update',
-          requestResourceData: dataToWrite,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
-  }, [firestore, toast]);
 
   useEffect(() => {
     // Current time ticker
@@ -143,36 +82,7 @@ export default function LiveNumber() {
       startTransition(async () => {
         const result = await getLiveSetData();
         if (result.success && result.data) {
-          const previousTwoD = previousTwoDRef.current;
           setLiveData(result.data);
-          previousTwoDRef.current = result.data.twoD;
-          
-          const mmtTime = new Date().toLocaleTimeString('en-US', {
-              timeZone: 'Asia/Yangon',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-          });
-          
-          if (result.data.twoD !== previousTwoD) {
-            for (const timeKey in RESULT_TIMES) {
-                const [resHour, resMinute] = timeKey.split(':').map(Number);
-                const [currHour, currMinute] = mmtTime.split(':').map(Number);
-                if (currHour === resHour && currMinute >= resMinute && currMinute <= resMinute + 1) {
-                    handleWriteToFirestore(timeKey, result.data);
-                    break;
-                }
-            }
-          }
-
-        } else if (result.error) {
-            if (!previousTwoDRef.current) {
-                toast({
-                  variant: 'destructive',
-                  title: 'Live Data Failed',
-                  description: result.error,
-                });
-            }
         }
         if (isLoading) {
             setIsLoading(false);
@@ -190,7 +100,7 @@ export default function LiveNumber() {
             timeoutId = setTimeout(smartFetch, interval);
         } else {
              if (isLoading) setIsLoading(false);
-             if (!previousTwoDRef.current) setLiveData(null);
+             setLiveData(current => current || null);
         }
     };
 
@@ -201,7 +111,7 @@ export default function LiveNumber() {
         clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handleWriteToFirestore]);
+  }, []);
 
   return (
     <Card className="w-full overflow-hidden text-center h-full">
