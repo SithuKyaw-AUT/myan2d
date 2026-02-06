@@ -1,8 +1,7 @@
 'use server';
 
 import { analyzeSetPatterns } from '@/ai/flows/analyze-patterns';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { historicalData } from '@/lib/historical-data';
 import type { DailyResult } from './types';
 
 
@@ -64,19 +63,16 @@ export async function getLiveSetData() {
 
 export async function handleAnalysis() {
     try {
-        const { firestore } = initializeFirebase();
-        const resultsCol = collection(firestore, 'lotteryResults');
-        const snapshot = await getDocs(resultsCol);
-        
         const numbers: string[] = [];
-        snapshot.docs.forEach((doc) => {
-            const data = doc.data() as DailyResult;
-            if (data.s12_01?.twoD) numbers.push(data.s12_01.twoD);
-            if (data.s16_30?.twoD) numbers.push(data.s16_30.twoD);
+        historicalData.forEach((day) => {
+            if (day.s11_00?.twoD) numbers.push(day.s11_00.twoD);
+            if (day.s12_01?.twoD) numbers.push(day.s12_01.twoD);
+            if (day.s15_00?.twoD) numbers.push(day.s15_00.twoD);
+            if (day.s16_30?.twoD) numbers.push(day.s16_30.twoD);
         });
         
         if (numbers.length === 0) {
-            return { success: false, error: "Not enough data in Firestore for analysis." };
+            return { success: false, error: "Not enough data in local file for analysis." };
         }
         
         const analysisResult = await analyzeSetPatterns({ numbers });
