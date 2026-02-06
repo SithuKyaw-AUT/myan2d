@@ -1,19 +1,24 @@
 import * as admin from 'firebase-admin';
 import type { ServiceAccount } from 'firebase-admin';
 
-// Type definition for the API result
-type ApiResult = {
+// Type definitions to match the new API structure
+type ApiChildResult = {
+    time: string;
     set: string;
     value: string;
-    twoD: string;
+    twod: string; // The API uses 'twod'
 };
 
-type ApiDailyResult = {
+type ApiDailyRecord = {
     date: string;
-    s11_00?: ApiResult | null;
-    s12_01?: ApiResult | null;
-    s15_00?: ApiResult | null;
-    s16_30?: ApiResult | null;
+    child: ApiChildResult[];
+};
+
+// Internal Firestore structure type for clarity
+type FirestoreResult = {
+    set: string;
+    value: string;
+    twoD: string; // Firestore and the app use 'twoD'
 };
 
 // Main function to run the import
@@ -47,7 +52,7 @@ async function importData() {
         throw new Error(`Failed to fetch data from API. Status: ${response.status} ${response.statusText}`);
     }
 
-    const data: ApiDailyResult[] = await response.json();
+    const data: ApiDailyRecord[] = await response.json();
     console.log(`Successfully fetched ${data.length} records from the API.`);
 
     if (data.length === 0) {
@@ -56,13 +61,13 @@ async function importData() {
     }
 
     // --- Process only the latest day's results from the API ---
-    const latestRecord = data[0];
+    const latestApiRecord = data[0];
 
     // 3. Prepare and write data to Firestore
     const batch = db.batch();
     const collectionRef = db.collection('lottery_results');
     
-    const docId = latestRecord.date;
+    const docId = latestApiRecord.date;
     if (!docId) {
         console.error('Error: Latest record from API has no date. Exiting.');
         return;
@@ -70,25 +75,34 @@ async function importData() {
 
     const docRef = collectionRef.doc(docId);
     
-    const dataToSet: Partial<ApiDailyResult> & { date: string } = {
-        date: latestRecord.date,
-        s11_00: latestRecord.s11_00 || null,
-        s12_01: latestRecord.s12_01 || null,
-        s16_30: latestRecord.s16_30 || null,
+    // Map the child results to a more accessible structure
+    const resultsByTime: { [key: string]: FirestoreResult } = {};
+    for (const childResult of latestApiRecord.child) {
+        // Ensure the child record is valid before processing
+        if (childResult.time && childResult.twod) {
+            const firestoreResult: FirestoreResult = {
+                set: childResult.set,
+                value: childResult.value,
+                twoD: childResult.twod, // Map 'twod' from API to 'twoD' for Firestore
+            };
+            resultsByTime[childResult.time] = firestoreResult;
+        }
+    }
+    
+    const s12_01_result = resultsByTime['12:01:00'] || null;
+
+    const dataToSet = {
+        date: latestApiRecord.date,
+        s11_00: resultsByTime['11:00:00'] || null,
+        s12_01: s12_01_result,
+        s16_30: resultsByTime['16:30:00'] || null,
+        // Business logic: The 3:00 PM result is always a copy of the 12:01 PM result.
+        // We enforce this here to correct any potential upstream API errors.
+        s15_00: s12_01_result, 
     };
     
-    // Business logic: The 3:00 PM result is always a copy of the 12:01 PM result.
-    // We enforce this here to correct any potential upstream API errors.
-    if (latestRecord.s12_01) {
-        console.log(`Ensuring 15:00 result is a copy of 12:01 result (${latestRecord.s12_01.twoD}).`);
-        dataToSet.s15_00 = latestRecord.s12_01;
-    } else {
-        dataToSet.s15_00 = latestRecord.s15_00 || null;
-    }
-
     // Using set with { merge: true } makes this an "upsert" operation.
     // If the document for today exists, it will be updated with the latest session data.
-    // If you delete the document, it will be recreated on the next run.
     batch.set(docRef, dataToSet, { merge: true });
     
     // 4. Commit the batch
