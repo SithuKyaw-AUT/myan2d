@@ -71,8 +71,8 @@ const analyzeSetPatternsFlow = ai.defineFlow(
     const prompt = `You are a lottery analysis expert specializing in the Thai SET-based 2D lottery.
 Your task is to analyze the provided historical 2D numbers and return a structured JSON object matching the requested output schema.
 
-Historical Data (last 200 results):
-${JSON.stringify(numbers.slice(-200))}
+Historical Data (last 100 results):
+${JSON.stringify(numbers.slice(-100))}
 
 Analysis:
 Please perform the following detailed analysis on the provided data:

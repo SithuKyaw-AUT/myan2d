@@ -115,16 +115,15 @@ export default function AiAnalysis() {
           });
         }
       } else {
-        setAnalysisResult(null);
         toast({
           variant: 'destructive',
-          title: 'Analysis Failed',
+          title: analysisResult ? 'Analysis Update Failed' : 'Analysis Failed',
           description:
             result.error || 'An unexpected error occurred.',
         });
       }
     });
-  }, [firestore, toast]);
+  }, [firestore, toast, analysisResult]);
 
   useEffect(() => {
     const handleNewResult = () => {
@@ -141,7 +140,7 @@ export default function AiAnalysis() {
 
 
   const renderContent = () => {
-    if (isPending) {
+    if (isPending && !analysisResult) {
       return <LoadingDashboard />;
     }
     if (analysisResult) {
@@ -188,7 +187,13 @@ export default function AiAnalysis() {
           className="w-full sm:w-auto"
         >
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isPending ? 'Analyzing...' : 'Generate Dashboard'}
+           {isPending
+            ? analysisResult
+              ? 'Updating Analysis...'
+              : 'Analyzing...'
+            : analysisResult
+            ? 'Refresh Analysis'
+            : 'Generate Dashboard'}
         </Button>
       </CardFooter>
     </Card>

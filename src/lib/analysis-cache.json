@@ -1,5 +1,5 @@
 {
-  "dataHash": "b75921f2bbe2fdf799891cb0d9afb35f683d53675b9c6b07834817514e5dae97",
+  "dataHash": "8dbba660e61c6cd96e91a92fd62af8c33b4a1f8c532012e5605631225e41e5a8",
   "analysisResult": {
     "analysis": {
       "oddEven": {
@@ -7,13 +7,13 @@
         "even": 46
       },
       "highLow": {
-        "high": 42,
-        "low": 46
+        "high": 40,
+        "low": 48
       },
       "digitFrequency": [
         {
           "digit": "0",
-          "count": 16
+          "count": 22
         },
         {
           "digit": "1",
@@ -21,7 +21,7 @@
         },
         {
           "digit": "2",
-          "count": 17
+          "count": 14
         },
         {
           "digit": "3",
@@ -29,7 +29,7 @@
         },
         {
           "digit": "4",
-          "count": 19
+          "count": 21
         },
         {
           "digit": "5",
@@ -37,15 +37,15 @@
         },
         {
           "digit": "6",
-          "count": 14
+          "count": 16
         },
         {
           "digit": "7",
-          "count": 19
+          "count": 21
         },
         {
           "digit": "8",
-          "count": 17
+          "count": 18
         },
         {
           "digit": "9",
@@ -55,11 +55,11 @@
       "pairDigitFrequency": [
         {
           "pair": "0",
-          "count": 10
+          "count": 9
         },
         {
           "pair": "1",
-          "count": 11
+          "count": 9
         },
         {
           "pair": "2",
@@ -67,23 +67,23 @@
         },
         {
           "pair": "3",
-          "count": 10
-        },
-        {
-          "pair": "4",
-          "count": 10
-        },
-        {
-          "pair": "5",
           "count": 7
         },
         {
-          "pair": "6",
+          "pair": "4",
           "count": 11
         },
         {
-          "pair": "7",
+          "pair": "5",
+          "count": 6
+        },
+        {
+          "pair": "6",
           "count": 12
+        },
+        {
+          "pair": "7",
+          "count": 13
         },
         {
           "pair": "8",
@@ -91,28 +91,28 @@
         },
         {
           "pair": "9",
-          "count": 5
+          "count": 9
         }
       ],
       "repeatingNumbers": {
-        "count": 4
+        "count": 5
       },
-      "summary": "The historical data shows a nearly balanced distribution between odd (42) and even (46) numbers, and similarly between low (46) and high (42) numbers, with a slight lean towards even and low. Digits 1, 4, and 7 are currently the most frequent, each appearing 19 times, while the digit 3 is the least common with 13 occurrences. For pair digits, '7' is the most dominant, appearing 12 times, closely followed by '1' and '6' with 11 occurrences each, while pair digit '2' is notably rare, appearing only 3 times. Repeating numbers like 44, 88, 33, and 99 collectively appeared 4 times."
+      "summary": "The analysis of the last 88 results reveals a slight dominance of even numbers over odd numbers (46 vs 42), and a more pronounced trend towards low-range numbers (00-49), with 48 occurrences compared to 40 high-range numbers. Digits 0, 4, and 7 are the most frequently appearing individual digits with 22, 21, and 21 counts respectively. The pair digit '7' shows the highest frequency with 13 occurrences, closely followed by '6' (12) and '4' (11). Repeating numbers, such as 33, 44, 88, and 99, were observed 5 times within this dataset."
     },
     "prediction": {
       "hotNumbers": [
         "72",
         "01",
-        "28"
+        "16"
       ],
       "coldNumbers": [
         "00",
-        "32",
-        "90"
+        "20",
+        "30"
       ],
-      "keyDigit": "7",
+      "keyDigit": "0",
       "predictedPairDigit": "7",
-      "summary": "Based on the analysis, the next draw is anticipated to continue a slight preference for even and low numbers. The digit '7' is identified as the key digit, being one of the most frequent overall and also dominating the pair digit frequency. Therefore, '7' is also our predicted pair digit. For hot numbers, '72', '01', and '28' are highly recommended due to their repeated appearances in recent history. Conversely, '00', '32', and '90' are considered cold numbers, having not appeared in the provided data, and could be due for a comeback."
+      "summary": "For the upcoming draw, we predict '72', '01', and '16' as hot numbers, based on their high frequency in recent results, especially '72' which appeared 4 times. Conversely, '00', '20', and '30' are considered cold numbers, as they have been absent or very rare in the recent data, making them potentially due. The key digit for the next draw is anticipated to be '0', given its overall highest frequency (22 times) in the historical data, suggesting a strong likelihood of its appearance. Additionally, the pair digit '7' is the most probable (13 occurrences), following its consistent appearance as the sum of digits' last digit. This forecast leans towards low, even numbers, with a strong emphasis on digits '0' and '7'."
     }
   }
 }
