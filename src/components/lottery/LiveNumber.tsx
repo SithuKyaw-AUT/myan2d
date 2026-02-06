@@ -27,12 +27,10 @@ type LiveData = {
 
 // Times are in MMT (Myanmar Time)
 const RESULT_TIMES: Record<string, string> = {
+    '11:00': 's11_00',
     '12:01': 's12_01',
+    '15:00': 's15_00',
     '16:30': 's16_30',
-};
-
-const COPY_TIMES: Record<string, string> = {
-    '12:01': 's15_00',
 };
 
 export default function LiveNumber() {
@@ -57,15 +55,10 @@ export default function LiveNumber() {
     };
     
     const fieldToUpdate = RESULT_TIMES[timeKey];
-    let dataToWrite: any = {
+    const dataToWrite: any = {
       date: docId,
       [fieldToUpdate]: resultData
     };
-    
-    if (COPY_TIMES[timeKey]) {
-        const copyField = COPY_TIMES[timeKey];
-        dataToWrite[copyField] = resultData;
-    }
 
     setDoc(docRef, dataToWrite, { merge: true })
       .then(() => {
