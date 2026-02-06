@@ -2,7 +2,6 @@ import Header from '@/components/layout/header';
 import LiveNumber from '@/components/lottery/LiveNumber';
 import HistoricalTable from '@/components/lottery/HistoricalTable';
 import AiAnalysis from '@/components/lottery/AiAnalysis';
-import FirestoreManager from '@/components/lottery/FirestoreManager';
 
 export default function Home() {
   return (
@@ -17,10 +16,6 @@ export default function Home() {
 
           <div className="lg:col-span-3">
             <HistoricalTable />
-          </div>
-
-          <div className="lg:col-span-5">
-            <FirestoreManager />
           </div>
 
           <div className="lg:col-span-5">

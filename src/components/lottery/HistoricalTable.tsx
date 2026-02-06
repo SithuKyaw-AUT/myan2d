@@ -16,10 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { DailyResult } from '@/app/types';
-import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, limit, orderBy } from 'firebase/firestore';
-import { useMemoFirebase } from '@/hooks/use-memo-firebase';
-import { Skeleton } from '../ui/skeleton';
+import { historicalData } from '@/lib/historical-data';
 
 function ResultCell({ twoD }: { twoD?: string | null }) {
   if (!twoD) {
@@ -29,44 +26,23 @@ function ResultCell({ twoD }: { twoD?: string | null }) {
 }
 
 export default function HistoricalTable() {
-  const { firestore } = useFirestore();
+  // Use the local data, showing the first 7 days to keep the UI consistent.
+  const results = historicalData.slice(0, 7);
 
-  const resultsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-      collection(firestore, 'lotteryResults'),
-      orderBy('date', 'desc'),
-      limit(7) // Display last 7 days
-    );
-  }, [firestore]);
-
-  const { data: results, loading } = useCollection(resultsQuery);
-  
   const renderContent = () => {
-    if (loading) {
-      return Array.from({ length: 5 }).map((_, i) => (
-        <TableRow key={i}>
-          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-8 mx-auto" /></TableCell>
-        </TableRow>
-      ));
-    }
-
     if (!results || results.length === 0) {
       return (
         <TableRow>
           <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-            No historical data found. Please use the manager to import data.
+            No historical data available.
           </TableCell>
         </TableRow>
       );
     }
 
-    return (results as DailyResult[]).map((result) => (
-      <TableRow key={result.id}>
+    // The data is already sorted by date descending in the source file.
+    return (results as Omit<DailyResult, 'id'>[]).map((result) => (
+      <TableRow key={result.date}>
         <TableCell className="font-medium text-muted-foreground">{(result.date as string).substring(5)}</TableCell>
         <TableCell><ResultCell twoD={result.s11_00?.twoD} /></TableCell>
         <TableCell><ResultCell twoD={result.s12_01?.twoD} /></TableCell>
@@ -83,7 +59,7 @@ export default function HistoricalTable() {
           Daily Results
         </CardTitle>
         <CardDescription>
-          Recent winning numbers from Firestore.
+          Recent winning numbers from local data.
         </CardDescription>
       </CardHeader>
       <CardContent>
