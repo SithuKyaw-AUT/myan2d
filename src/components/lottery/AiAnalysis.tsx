@@ -383,7 +383,7 @@ const translations = {
     en: {
         dashboardTitle: "Analysis Dashboard",
         dashboardSubtitle: "Myanmar-style rule-based filtering and statistical evaluation.",
-        generateDashboard: "Generate Dashboard",
+        generateDashboard: "Generate Analysis Report",
         refreshAnalysis: "Refresh Analysis",
         analyzing: "Analyzing...",
         updatingAnalysis: "Updating Analysis...",
@@ -415,7 +415,7 @@ const translations = {
     my: {
         dashboardTitle: "သုံးသပ်ချက် ဒက်ရှ်ဘုတ်",
         dashboardSubtitle: "မြန်မာ့နည်းကျ စည်းမျဉ်း-အခြေပြု စစ်ထုတ်ခြင်းနှင့် စာရင်းအင်းအကဲဖြတ်ခြင်း။",
-        generateDashboard: "ဒက်ရှ်ဘုတ် ဖန်တီးပါ",
+        generateDashboard: "သုံးသပ်ချက် အစီရင်ခံစာ ဖန်တီးပါ",
         refreshAnalysis: "သုံးသပ်ချက် အသစ်လုပ်ပါ",
         analyzing: "သုံးသပ်နေသည်...",
         updatingAnalysis: "သုံးသပ်ချက် အသစ်လုပ်နေသည်...",
