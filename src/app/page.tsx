@@ -15,7 +15,7 @@ export default function Home() {
         </div>
       </main>
       <footer className="py-6 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} mm2D. Data from SET.
+        © {new Date().getFullYear()} mm2D Live. Data from SET.
       </footer>
     </div>
   );
