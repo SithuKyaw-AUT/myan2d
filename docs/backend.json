@@ -1,54 +1,121 @@
 {
   "entities": {
-    "lotteryResult": {
-      "title": "Lottery Result",
-      "description": "Stores the 2D lottery results for a single day.",
+    "LotteryResult": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LotteryResult",
       "type": "object",
+      "description": "Represents a single 2D lottery result for a specific date.",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the lottery result entry."
+        },
         "date": {
           "type": "string",
-          "description": "The date of the results in YYYY-MM-DD format."
+          "description": "The date for which the lottery result was drawn.",
+          "format": "date-time"
         },
-        "s11_00": {
-          "$ref": "#/entities/result"
-        },
-        "s12_01": {
-          "$ref": "#/entities/result"
-        },
-        "s15_00": {
-          "$ref": "#/entities/result"
-        },
-        "s16_30": {
-          "$ref": "#/entities/result"
+        "number": {
+          "type": "string",
+          "description": "The winning 2D lottery number."
         }
-      }
+      },
+      "required": [
+        "id",
+        "date",
+        "number"
+      ]
     },
-    "result": {
-      "title": "Single Result",
-      "description": "A single lottery result.",
+    "PatternAnalysis": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PatternAnalysis",
       "type": "object",
+      "description": "Stores the AI-generated pattern analysis for a specific period.",
       "properties": {
-        "set": {
-          "type": "string"
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the pattern analysis entry."
         },
-        "value": {
-          "type": "string"
+        "analysisDate": {
+          "type": "string",
+          "description": "The date when the analysis was performed.",
+          "format": "date-time"
         },
-        "twoD": {
-          "type": "string"
+        "periodStartDate": {
+          "type": "string",
+          "description": "The start date of the lottery data period used for analysis.",
+          "format": "date-time"
+        },
+        "periodEndDate": {
+          "type": "string",
+          "description": "The end date of the lottery data period used for analysis.",
+          "format": "date-time"
+        },
+        "frequentNumbers": {
+          "type": "array",
+          "description": "An array of the most frequently drawn numbers during the analysis period.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lotteryResultIds": {
+          "type": "array",
+          "description": "References to LotteryResult. (Relationship: PatternAnalysis 1:N LotteryResult)",
+          "items": {
+            "type": "string"
+          }
         }
-      }
+      },
+      "required": [
+        "id",
+        "analysisDate",
+        "periodStartDate",
+        "periodEndDate",
+        "frequentNumbers"
+      ]
     }
   },
   "auth": {
-    "providers": []
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/lotteryResults/{date}": {
-      "schema": {
-        "$ref": "#/entities/lotteryResult"
+    "structure": [
+      {
+        "path": "/lottery_results/{lotteryResultId}",
+        "definition": {
+          "entityName": "LotteryResult",
+          "schema": {
+            "$ref": "#/backend/entities/LotteryResult"
+          },
+          "description": "Stores individual lottery result entries. Only accessible by admins.",
+          "params": [
+            {
+              "name": "lotteryResultId",
+              "description": "Unique identifier for each lottery result document."
+            }
+          ]
+        }
       },
-      "description": "A collection of daily lottery results, where the document ID is the date in YYYY-MM-DD format."
-    }
+      {
+        "path": "/pattern_analyses/{patternAnalysisId}",
+        "definition": {
+          "entityName": "PatternAnalysis",
+          "schema": {
+            "$ref": "#/backend/entities/PatternAnalysis"
+          },
+          "description": "Stores AI-generated pattern analyses, referencing lottery results. Only accessible by admins.",
+          "params": [
+            {
+              "name": "patternAnalysisId",
+              "description": "Unique identifier for each pattern analysis document."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to store lottery results and AI-generated pattern analysis. It prioritizes authorization independence, clarity, and scalability. Lottery results are stored in the `/lottery_results` collection, allowing for easy querying and display of the most recent results. Pattern analyses, which reference lottery results, are stored in the `/pattern_analyses` collection. The design focuses on simplicity and avoids complex hierarchical dependencies, which enables secure and efficient data management. Since all documents in each collection share the same security requirements (admin access only), structural segregation is maintained."
   }
 }
