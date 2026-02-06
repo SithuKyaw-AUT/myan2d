@@ -1,118 +1,298 @@
 {
-  "dataHash": "8dbba660e61c6cd96e91a92fd62af8c33b4a1f8c532012e5605631225e41e5a8",
+  "dataHash": "63a042cc0ab331e0c87ffc27b98aaf09fe2f71570e7e283c2e72a02abf7757df",
   "analysisResult": {
-    "analysis": {
-      "oddEven": {
-        "odd": 42,
-        "even": 46
+    "stage1_filtering": {
+      "candidates": {
+        "powerDigits": [
+          "04",
+          "09",
+          "14",
+          "19",
+          "24",
+          "29",
+          "34",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "54",
+          "59",
+          "64",
+          "69",
+          "74",
+          "79",
+          "84",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98",
+          "99"
+        ],
+        "brotherPairs": [
+          "44",
+          "49",
+          "94"
+        ],
+        "oneChange": [
+          "09",
+          "19",
+          "29",
+          "39",
+          "49",
+          "59",
+          "69",
+          "79",
+          "89",
+          "90",
+          "91",
+          "92",
+          "93",
+          "94",
+          "95",
+          "96",
+          "97",
+          "98"
+        ],
+        "doubles": []
       },
-      "highLow": {
-        "high": 40,
-        "low": 48
-      },
-      "digitFrequency": [
-        {
-          "digit": "0",
-          "count": 22
-        },
-        {
-          "digit": "1",
-          "count": 19
-        },
-        {
-          "digit": "2",
-          "count": 14
-        },
-        {
-          "digit": "3",
-          "count": 13
-        },
-        {
-          "digit": "4",
-          "count": 21
-        },
-        {
-          "digit": "5",
-          "count": 16
-        },
-        {
-          "digit": "6",
-          "count": 16
-        },
-        {
-          "digit": "7",
-          "count": 21
-        },
-        {
-          "digit": "8",
-          "count": 18
-        },
-        {
-          "digit": "9",
-          "count": 18
-        }
+      "finalCandidates": [
+        "04",
+        "09",
+        "14",
+        "19",
+        "24",
+        "29",
+        "34",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "54",
+        "59",
+        "64",
+        "69",
+        "74",
+        "79",
+        "84",
+        "89",
+        "90",
+        "91",
+        "92",
+        "93",
+        "94",
+        "95",
+        "96",
+        "97",
+        "98"
       ],
-      "pairDigitFrequency": [
-        {
-          "pair": "0",
-          "count": 9
-        },
-        {
-          "pair": "1",
-          "count": 9
-        },
-        {
-          "pair": "2",
-          "count": 3
-        },
-        {
-          "pair": "3",
-          "count": 7
-        },
-        {
-          "pair": "4",
-          "count": 11
-        },
-        {
-          "pair": "5",
-          "count": 6
-        },
-        {
-          "pair": "6",
-          "count": 12
-        },
-        {
-          "pair": "7",
-          "count": 13
-        },
-        {
-          "pair": "8",
-          "count": 9
-        },
-        {
-          "pair": "9",
-          "count": 9
-        }
-      ],
-      "repeatingNumbers": {
-        "count": 5
-      },
-      "summary": "The analysis of the last 88 results reveals a slight dominance of even numbers over odd numbers (46 vs 42), and a more pronounced trend towards low-range numbers (00-49), with 48 occurrences compared to 40 high-range numbers. Digits 0, 4, and 7 are the most frequently appearing individual digits with 22, 21, and 21 counts respectively. The pair digit '7' shows the highest frequency with 13 occurrences, closely followed by '6' (12) and '4' (11). Repeating numbers, such as 33, 44, 88, and 99, were observed 5 times within this dataset."
+      "summary": "Generated candidate numbers using Power, Brother, One-Change, and Double rules. After excluding the last 2 results, 35 final candidates remain."
     },
-    "prediction": {
-      "hotNumbers": [
-        "72",
-        "01",
-        "16"
+    "stage2_evaluation": {
+      "individualHitRates": [
+        {
+          "number": "04",
+          "count": 2,
+          "hitRate": 2.247191011235955
+        },
+        {
+          "number": "24",
+          "count": 2,
+          "hitRate": 2.247191011235955
+        },
+        {
+          "number": "45",
+          "count": 2,
+          "hitRate": 2.247191011235955
+        },
+        {
+          "number": "47",
+          "count": 2,
+          "hitRate": 2.247191011235955
+        },
+        {
+          "number": "54",
+          "count": 2,
+          "hitRate": 2.247191011235955
+        },
+        {
+          "number": "91",
+          "count": 2,
+          "hitRate": 2.247191011235955
+        },
+        {
+          "number": "95",
+          "count": 2,
+          "hitRate": 2.247191011235955
+        },
+        {
+          "number": "09",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "40",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "42",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "43",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "44",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "46",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "48",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "49",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "59",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "64",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "79",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "89",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "92",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "93",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "94",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "96",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "98",
+          "count": 1,
+          "hitRate": 1.1235955056179776
+        },
+        {
+          "number": "14",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "19",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "29",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "34",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "39",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "41",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "69",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "74",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "84",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "90",
+          "count": 0,
+          "hitRate": 0
+        },
+        {
+          "number": "97",
+          "count": 0,
+          "hitRate": 0
+        }
       ],
-      "coldNumbers": [
-        "00",
-        "20",
-        "30"
-      ],
-      "keyDigit": "0",
-      "predictedPairDigit": "7",
-      "summary": "For the upcoming draw, we predict '72', '01', and '16' as hot numbers, based on their high frequency in recent results, especially '72' which appeared 4 times. Conversely, '00', '20', and '30' are considered cold numbers, as they have been absent or very rare in the recent data, making them potentially due. The key digit for the next draw is anticipated to be '0', given its overall highest frequency (22 times) in the historical data, suggesting a strong likelihood of its appearance. Additionally, the pair digit '7' is the most probable (13 occurrences), following its consistent appearance as the sum of digits' last digit. This forecast leans towards low, even numbers, with a strong emphasis on digits '0' and '7'."
-    }
+      "categoryHitRates": {
+        "powerDigitHitRate": 37.07865168539326,
+        "brotherPairHitRate": 3.3707865168539324,
+        "oneChangeHitRate": 15.730337078651685,
+        "doubleNumberHitRate": 0
+      },
+      "summary": "Calculated historical hit rates for each final candidate and for each rule category based on the last 90+ days of data."
+    },
+    "prediction": "Based on rule-based filtering and statistical analysis, the candidate with the highest historical hit rate is \"04\" (2.25%). This synthesis suggests focusing on numbers that are both generated by the rules and have strong past performance."
   }
 }

@@ -1,6 +1,6 @@
 import type { DailyResult, Result } from '@/app/types';
 
-// This data has been pre-processed from the JSON provided by the user.
+// This data has been corrected to ensure all time slots map to the correct fields.
 export const historicalData: Omit<DailyResult, 'id'>[] = [
   {
     date: '2026-02-05',
