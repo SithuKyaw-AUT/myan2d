@@ -3,9 +3,16 @@ name: Import Historical 2D Data
 on:
   workflow_dispatch: # Allows manual triggering from the Actions tab
   schedule:
-    # Runs every day at 17:00 MMT (UTC+6:30), which is 10:30 UTC.
-    # This is after the market closes.
-    - cron: '30 10 * * 1-5' # Runs Mon-Fri
+    # Runs every weekday at 11:01, 12:02, 15:01, and 16:31 MMT (UTC+6:30)
+    # to fetch the latest results after they are published.
+    # 11:01 MMT -> 04:31 UTC
+    - cron: '31 4 * * 1-5'
+    # 12:02 MMT -> 05:32 UTC
+    - cron: '32 5 * * 1-5'
+    # 15:01 MMT -> 08:31 UTC
+    - cron: '31 8 * * 1-5'
+    # 16:31 MMT -> 10:01 UTC
+    - cron: '1 10 * * 1-5'
 
 jobs:
   import-data:
