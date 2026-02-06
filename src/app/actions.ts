@@ -22,63 +22,102 @@ function get2DNumber(setIndex: string, setValue: string): string {
 export async function populateFirestoreFromApi() {
     try {
         const { firestore } = initializeFirebase();
-
-        // 1. Fetch all historical data from the API
-        const response = await fetch('https://api.thaistock2d.com/history', { cache: 'no-store' });
-        if (!response.ok) {
-            return { success: false, error: `API request failed with status ${response.status}` };
-        }
-        
-        let rawData;
-        const responseText = await response.text();
-        try {
-            rawData = JSON.parse(responseText);
-        } catch (e) {
-            return { success: false, error: 'Failed to parse historical data. The API may be down.' };
-        }
-
-        if (!Array.isArray(rawData)) {
-             return { success: false, error: 'Historical data is not in the expected format.' };
-        }
-        
-        // 2. Process and batch write to Firestore
         const batch = writeBatch(firestore);
         const resultsCollection = collection(firestore, 'lotteryResults');
+        const today = new Date();
+        const promises = [];
+        let successfulImports = 0;
 
-        rawData.forEach((day: any) => {
-            const date = day.date.split('-').reverse().join('-'); // Convert DD-MM-YYYY to YYYY-MM-DD
-            const docRef = doc(resultsCollection, date);
+        // Fetch for the last 90 days
+        for (let i = 0; i < 90; i++) {
+            const date = new Date();
+            date.setDate(today.getDate() - i);
 
-            const dailyData: DailyResult = {
-                date: date,
-                s12_01: day['12:01'] ? {
-                    set: day['12:01'].set,
-                    value: day['12:01'].value,
-                    twoD: get2DNumber(day['12:01'].set, day['12:01'].value)
-                } : null,
-                s16_30: day['4:30'] ? { // API uses '4:30'
-                    set: day['4:30'].set,
-                    value: day['4:30'].value,
-                    twoD: get2DNumber(day['4:30'].set, day['4:30'].value)
-                } : null,
-            };
-
-            // Copy 12:01 result to 15:00 if it exists
-            if (dailyData.s12_01) {
-                dailyData.s15_00 = dailyData.s12_01;
-            } else {
-                 dailyData.s15_00 = null;
+            // Skip weekends (Saturday=6, Sunday=0)
+            const dayOfWeek = date.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                continue;
             }
+
+            const formattedApiDate = [
+                ('0' + date.getDate()).slice(-2),
+                ('0' + (date.getMonth() + 1)).slice(-2),
+                date.getFullYear(),
+            ].join('-');
+
+            const formattedDocId = [
+                date.getFullYear(),
+                ('0' + (date.getMonth() + 1)).slice(-2),
+                ('0' + date.getDate()).slice(-2),
+            ].join('-');
+
+            const promise = fetch(`https://api.thaistock2d.com/2d_result?date=${formattedApiDate}`, { cache: 'no-store' })
+                .then(response => {
+                    if (!response.ok) {
+                        console.warn(`API request failed for date ${formattedApiDate} with status ${response.status}`);
+                        return null;
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    if (!text) return null;
+
+                    let day;
+                    try {
+                        day = JSON.parse(text);
+                    } catch (e) {
+                        console.warn(`Failed to parse JSON for date ${formattedApiDate}. Response:`, text);
+                        return null;
+                    }
+                    
+                    if (!day || !day.date) {
+                        return null;
+                    }
+
+                    const docRef = doc(resultsCollection, formattedDocId);
+
+                    const dailyData: DailyResult = {
+                        date: formattedDocId,
+                        s11_00: null,
+                        s12_01: null,
+                        s15_00: null,
+                        s16_30: null,
+                    };
+                    
+                    if (day['12:01']) {
+                        dailyData.s12_01 = {
+                            set: day['12:01'].set,
+                            value: day['12:01'].value,
+                            twoD: get2DNumber(day['12:01'].set, day['12:01'].value)
+                        };
+                        dailyData.s15_00 = dailyData.s12_01;
+                    }
+                    
+                    if (day['4:30']) {
+                        dailyData.s16_30 = {
+                            set: day['4:30'].set,
+                            value: day['4:30'].value,
+                            twoD: get2DNumber(day['4:30'].set, day['4:30'].value)
+                        };
+                    }
+
+                    batch.set(docRef, dailyData, { merge: true });
+                    successfulImports++;
+                })
+                .catch(error => {
+                    console.error(`An unexpected error occurred during fetch for date ${formattedApiDate}:`, error);
+                });
             
-            // 11:00 is always null from API history
-            dailyData.s11_00 = null;
+            promises.push(promise);
+        }
 
-            batch.set(docRef, dailyData, { merge: true });
-        });
+        await Promise.all(promises);
 
-        await batch.commit();
+        if (successfulImports > 0) {
+            await batch.commit();
+        }
 
-        return { success: true, message: `Successfully imported ${rawData.length} days of data.` };
+        return { success: true, message: `Successfully imported ${successfulImports} days of data.` };
 
     } catch (error: any) {
         console.error('Failed to populate Firestore:', error);
@@ -90,7 +129,7 @@ export async function populateFirestoreFromApi() {
 export async function getLiveSetData() {
   try {
     const response = await fetch('https://api.thaistock2d.com/live', { cache: 'no-store' });
-    if (!response.ok) {
+     if (!response.ok) {
         throw new Error(`Failed to fetch live data: ${response.statusText}`);
     }
     
@@ -100,10 +139,11 @@ export async function getLiveSetData() {
         result = JSON.parse(responseText);
     } catch (error) {
         console.error('Error parsing live data JSON:', error);
-        return { success: false, error: "Invalid response from live data API" };
+        // Return a structured error, but don't throw, to avoid crashing if the API is temporarily down.
+        return { success: false, error: "Live data API returned invalid JSON." };
     }
     
-    if (result.live) {
+    if (result && result.live) {
       const { set, value, time } = result.live;
       return {
         success: true,
@@ -115,7 +155,8 @@ export async function getLiveSetData() {
         },
       };
     }
-    throw new Error("Invalid response format from live data API");
+     // Handle cases where the API returns a valid JSON but not in the expected format
+    return { success: false, error: "Live data API response is not in the expected format."};
   } catch (error: any) {
     console.error('Failed to get live SET data:', error);
     return {
