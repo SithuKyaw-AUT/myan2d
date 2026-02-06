@@ -14,18 +14,21 @@ export const AnalyzePatternsInputSchema = z.object({
 });
 export type AnalyzePatternsInput = z.infer<typeof AnalyzePatternsInputSchema>;
 
-const CandidateNumbersSchema = z.object({
-    powerDigits: z.array(z.string().length(2)),
-    brotherPairs: z.array(z.string().length(2)),
-    oneChange: z.array(z.string().length(2)),
-    doubles: z.array(z.string().length(2)),
+const MarketContextSchema = z.object({
+    previousResult: z.string().length(2),
+    setOpenIndex: z.string(),
+    powerDigits: z.array(z.string()),
 });
 
-const HitRateSchema = z.object({
+const CandidateStatsSchema = z.object({
     number: z.string().length(2),
     count: z.number(),
     hitRate: z.number(),
+    ruleOverlap: z.string(),
+    momentum: z.string(),
+    confidence: z.number(),
 });
+export type CandidateStats = z.infer<typeof CandidateStatsSchema>;
 
 const CategoryHitRateSchema = z.object({
     powerDigitHitRate: z.number(),
@@ -34,17 +37,17 @@ const CategoryHitRateSchema = z.object({
     doubleNumberHitRate: z.number(),
 });
 
+const FinalSelectionSchema = z.object({
+    main: z.array(z.string().length(2)),
+    strongSupport: z.array(z.string().length(2)),
+    watchRotation: z.array(z.string().length(2)),
+});
+
 export const AnalyzePatternsOutputSchema = z.object({
-  stage1_filtering: z.object({
-    candidates: CandidateNumbersSchema,
-    finalCandidates: z.array(z.string().length(2)),
-    summary: z.string(),
-  }),
-  stage2_evaluation: z.object({
-      individualHitRates: z.array(HitRateSchema),
-      categoryHitRates: CategoryHitRateSchema,
-      summary: z.string(),
-  }),
-  prediction: z.string(),
+  marketContext: MarketContextSchema,
+  executiveSummary: z.string(),
+  categoryHitRates: CategoryHitRateSchema,
+  topCandidates: z.array(CandidateStatsSchema),
+  finalSelection: FinalSelectionSchema,
 });
 export type AnalyzePatternsOutput = z.infer<typeof AnalyzePatternsOutputSchema>;

@@ -26,7 +26,20 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { BrainCircuit, Download, Loader2, Percent, WandSparkles } from 'lucide-react';
+import {
+  BrainCircuit,
+  Download,
+  Loader2,
+  FileText,
+  PieChart,
+  Star,
+  ShieldAlert,
+  ArrowLeftRight,
+  Zap,
+  Hash,
+  TrendingUp,
+  BarChart2,
+} from 'lucide-react';
 import { getLiveSetData, handleAnalysis } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
@@ -42,6 +55,7 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table';
+import { Badge } from '@/components/ui/badge';
 import type { AnalyzePatternsOutput, AnalyzePatternsInput } from '@/app/analysis-types';
 
 
@@ -75,7 +89,6 @@ export default function AiAnalysis() {
         return;
       }
       
-      // Fetch numbers for filtering (last 30 days ~ 120 results)
       const filterQuery = query(collection(firestore, 'lottery_results'), orderBy('date', 'desc'), limit(30));
       const filterSnapshot = await getDocs(filterQuery);
       
@@ -88,7 +101,6 @@ export default function AiAnalysis() {
         if (day.s11_00?.twoD) historicalNumbers.push(day.s11_00.twoD);
       });
       
-      // Fetch numbers for evaluation (last 90 days ~ 360 results)
       const evalQuery = query(collection(firestore, 'lottery_results'), orderBy('date', 'desc'), limit(90));
       const evalSnapshot = await getDocs(evalQuery);
 
@@ -134,7 +146,6 @@ export default function AiAnalysis() {
 
   useEffect(() => {
     const handleNewResult = () => {
-        toast({ title: 'New result saved!', description: 'Automatically updating analysis...' });
         onAnalyze();
     };
 
@@ -156,32 +167,45 @@ export default function AiAnalysis() {
     }
 
     const t = translations[language];
-    const { stage2_evaluation, prediction } = analysisResult;
-    const top10Candidates = stage2_evaluation.individualHitRates.slice(0, 10);
-    const categoryRates = stage2_evaluation.categoryHitRates;
+    const { marketContext, executiveSummary, categoryHitRates, topCandidates, finalSelection } = analysisResult;
 
-    let content = `mm2D Live - Analysis Report\n`;
-    content += `=================================\n\n`;
+    let content = `mm2D LIVE — Analysis Report\n`;
+    content += `=================================\n`;
+    content += `Date: ${new Date().toLocaleDateString('en-GB')}\n`;
+    content += `Data Window: Last 90 Sessions\n`;
+    content += `Method: Rule Filtering + Statistical Validation\n\n`;
 
     content += `--- ${t.executiveSummary} ---\n`;
-    content += `${prediction}\n\n`;
+    content += `${executiveSummary}\n\n`;
+    
+    content += `--- ${t.marketContext} ---\n`;
+    content += `Previous Result: ${marketContext.previousResult}\n`;
+    content += `SET Open Index: ${marketContext.setOpenIndex}\n`;
+    content += `Power Digits: ${marketContext.powerDigits.join(' / ')}\n\n`;
 
-    content += `--- ${t.analysisBreakdown} ---\n\n`;
+    content += `--- ${t.rulePerformance} ---\n`;
+    content += `${t.power}: ${categoryHitRates.powerDigitHitRate.toFixed(2)}%\n`;
+    content += `${t.oneChangeLabel}: ${categoryHitRates.oneChangeHitRate.toFixed(2)}%\n`;
+    content += `${t.brother}: ${categoryHitRates.brotherPairHitRate.toFixed(2)}%\n`;
+    content += `${t.doublesLabel}: ${categoryHitRates.doubleNumberHitRate.toFixed(2)}%\n\n`;
 
-    content += `* ${t.categoryPerformance} *\n`;
-    content += `- ${t.power}: ${categoryRates.powerDigitHitRate.toFixed(2)}%\n`;
-    content += `- ${t.brother}: ${categoryRates.brotherPairHitRate.toFixed(2)}%\n`;
-    content += `- ${t.oneChangeLabel}: ${categoryRates.oneChangeHitRate.toFixed(2)}%\n`;
-    content += `- ${t.doublesLabel}: ${categoryRates.doubleNumberHitRate.toFixed(2)}%\n\n`;
-
-    content += `* ${t.top10Candidates} *\n`;
-    content += `${t.number.padEnd(10)} | ${t.hitCount.padEnd(15)} | ${t.likelihood}\n`;
-    content += `${'-'.repeat(10)} | ${'-'.repeat(15)} | ${'-'.repeat(12)}\n`;
-    top10Candidates.forEach(item => {
-      content += `${item.number.padEnd(10)} | ${String(item.count).padEnd(15)} | ${item.hitRate.toFixed(2)}%\n`;
+    content += `--- ${t.topCandidates} ---\n`;
+    content += `Number | Hits | Rate   | Overlap          | Momentum  | Confidence\n`;
+    content += `------------------------------------------------------------------\n`;
+    topCandidates.forEach(c => {
+        content += `${c.number.padEnd(7)}| ${String(c.count).padEnd(5)}| ${c.hitRate.toFixed(2).padEnd(6)}%| ${c.ruleOverlap.padEnd(17)}| ${c.momentum.padEnd(10)}| ${c.confidence}\n`;
     });
+    content += `\n`;
 
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    content += `--- ${t.finalSelection} ---\n`;
+    content += `${t.main}: ${finalSelection.main.join(' • ')}\n`;
+    content += `${t.strongSupport}: ${finalSelection.strongSupport.join(' • ')}\n`;
+    content += `${t.watchRotation}: ${finalSelection.watchRotation.join(' • ')}\n\n`;
+
+    content += `--- ${t.riskNotice} ---\n`;
+    content += `${t.riskNoticeText}\n`;
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-t' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -209,6 +233,7 @@ export default function AiAnalysis() {
       </div>
     );
   };
+  const t = translations[language];
 
   return (
     <Card className="w-full">
@@ -220,10 +245,10 @@ export default function AiAnalysis() {
             </div>
             <div>
               <CardTitle className="font-headline text-2xl">
-                Analysis Dashboard
+                {t.dashboardTitle}
               </CardTitle>
               <CardDescription>
-                Myanmar-style rule-based filtering and statistical evaluation.
+                {t.dashboardSubtitle}
               </CardDescription>
             </div>
           </div>
@@ -251,11 +276,11 @@ export default function AiAnalysis() {
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
            {isPending
             ? analysisResult
-              ? 'Updating Analysis...'
-              : 'Analyzing...'
+              ? t.updatingAnalysis
+              : t.analyzing
             : analysisResult
-            ? 'Refresh Analysis'
-            : 'Generate Dashboard'}
+            ? t.refreshAnalysis
+            : t.generateDashboard}
         </Button>
       </CardFooter>
     </Card>
@@ -275,30 +300,64 @@ const LoadingDashboard = () => (
 
 const translations = {
     en: {
+        dashboardTitle: "Analysis Dashboard",
+        dashboardSubtitle: "Myanmar-style rule-based filtering and statistical evaluation.",
+        generateDashboard: "Generate Dashboard",
+        refreshAnalysis: "Refresh Analysis",
+        analyzing: "Analyzing...",
+        updatingAnalysis: "Updating Analysis...",
         executiveSummary: "Executive Summary",
-        executiveSummarySubtitle: "Synthesized from rule-based filtering and statistical analysis.",
-        analysisBreakdown: "Analysis Breakdown",
-        analysisBreakdownSubtitle: "Historical performance of rules and top candidates.",
-        categoryPerformance: "Rule Category Performance",
-        top10Candidates: "Top 10 Likely Numbers",
+        marketContext: "Market Context",
+        previousResult: "Previous Result",
+        setOpenIndex: "SET Open Index",
+        powerDigits: "Power Digits",
+        rulePerformance: "Rule Performance (90 Sessions)",
+        ruleCategoryAccuracy: "Rule Category Accuracy",
+        topCandidates: "Top Candidates — Statistical Ranking",
+        finalSelection: "Final Selection",
+        main: "MAIN",
+        strongSupport: "STRONG SUPPORT",
+        watchRotation: "WATCH / ROTATION",
+        riskNotice: "Risk Notice",
+        riskNoticeText: "Historical hit rate remains low due to random market behavior. Analysis is designed to reduce numbers, not guarantee outcomes.",
         number: 'Number',
-        hitCount: 'Hit Count (90d)',
-        likelihood: 'Likelihood (%)',
+        hitCount: 'Hits',
+        likelihood: 'Likelihood',
+        ruleOverlap: 'Rule Overlap',
+        momentum: 'Momentum',
+        confidence: 'Confidence',
         power: 'Power',
         brother: 'Brother',
         oneChangeLabel: '1-Change',
-        doublesLabel: 'Doubles',
+        doublesLabel: 'Double',
     },
     my: {
+        dashboardTitle: "သုံးသပ်ချက် ဒက်ရှ်ဘုတ်",
+        dashboardSubtitle: "မြန်မာ့နည်းကျ စည်းမျဉ်း-အခြေပြု စစ်ထုတ်ခြင်းနှင့် စာရင်းအင်းအကဲဖြတ်ခြင်း။",
+        generateDashboard: "ဒက်ရှ်ဘုတ် ဖန်တီးပါ",
+        refreshAnalysis: "သုံးသပ်ချက် အသစ်လုပ်ပါ",
+        analyzing: "သုံးသပ်နေသည်...",
+        updatingAnalysis: "သုံးသပ်ချက် အသစ်လုပ်နေသည်...",
         executiveSummary: "အမှုဆောင် အနှစ်ချုပ်",
-        executiveSummarySubtitle: "စည်းမျဉ်း-အခြေပြု စစ်ထုတ်ခြင်းနှင့် စာရင်းအင်းအကဲဖြတ်ခြင်းမှ ပေါင်းစပ်ထားသည်။",
-        analysisBreakdown: "သုံးသပ်ချက် အသေးစိတ်",
-        analysisBreakdownSubtitle: "စည်းမျဉ်းများနှင့် ထိပ်တန်းဂဏန်းများ၏ ယခင်စွမ်းဆောင်ရည်။",
-        categoryPerformance: "စည်းမျဉ်းအုပ်စု စွမ်းဆောင်ရည်",
-        top10Candidates: "အလားအလာအရှိဆုံး ဂဏန်း ၁၀ ကွက်",
+        marketContext: "ဈေးကွက် အခြေအနေ",
+        previousResult: "ယခင် ထွက်ဂဏန်း",
+        setOpenIndex: "SET အဖွင့်",
+        powerDigits: "ပါဝါ ကဏန်းများ",
+        rulePerformance: "စည်းမျဉ်း စွမ်းဆောင်ရည် (ပွဲ ၉၀)",
+        ruleCategoryAccuracy: "စည်းမျဉ်းအုပ်စု တိကျမှု",
+        topCandidates: "ထိပ်တန်း ဂဏန်းများ — စာရင်းအင်း အဆင့်",
+        finalSelection: "နောက်ဆုံး ရွေးချယ်မှု",
+        main: "မိန်",
+        strongSupport: "အားကောင်း",
+        watchRotation: "စောင့်ကြည့်/လှည့်",
+        riskNotice: "သတိပေးချက်",
+        riskNoticeText: "ဈေးကွက်၏ ကျပန်းသဘောသဘာဝကြောင့် ယခင်ထိမှန်မှုနှုန်းမှာ နည်းနေပါသည်။ ဤသုံးသပ်ချက်သည် ဂဏန်းအရေအတွက်လျှော့ချရန်ဖြစ်ပြီး အောင်မြင်မှုကို အာမမခံပါ။",
         number: 'ဂဏန်း',
-        hitCount: 'ထိမှန်မှု (ရက် ၉၀)',
-        likelihood: 'ဖြစ်နိုင်ခြေ (%)',
+        hitCount: 'ထိရေ',
+        likelihood: 'ဖြစ်နိုင်ခြေ',
+        ruleOverlap: 'စည်းမျဉ်း ထပ်တူ',
+        momentum: 'အရှိန်',
+        confidence: 'ယုံကြည်မှု',
         power: 'ပါဝါ',
         brother: 'ညီအကို',
         oneChangeLabel: 'တစ်လုံးပြောင်း',
@@ -307,94 +366,169 @@ const translations = {
 };
 
 const AnalysisDashboard = ({ data, language }: { data: AnalyzePatternsOutput, language: 'en' | 'my' }) => {
-  const { stage2_evaluation, prediction } = data;
   const t = translations[language];
-  
-  const top10Candidates = stage2_evaluation.individualHitRates.slice(0, 10);
-  
+  const { marketContext, executiveSummary, categoryHitRates, topCandidates, finalSelection } = data;
+
   const chartData = [
-      { name: t.power, "Likelihood": stage2_evaluation.categoryHitRates.powerDigitHitRate, fill: "hsl(var(--chart-1))" },
-      { name: t.brother, "Likelihood": stage2_evaluation.categoryHitRates.brotherPairHitRate, fill: "hsl(var(--chart-2))" },
-      { name: t.oneChangeLabel, "Likelihood": stage2_evaluation.categoryHitRates.oneChangeHitRate, fill: "hsl(var(--chart-3))" },
-      { name: t.doublesLabel, "Likelihood": stage2_evaluation.categoryHitRates.doubleNumberHitRate, fill: "hsl(var(--chart-4))" },
+      { name: t.power, "Accuracy": categoryHitRates.powerDigitHitRate, fill: "hsl(var(--chart-1))" },
+      { name: t.oneChangeLabel, "Accuracy": categoryHitRates.oneChangeHitRate, fill: "hsl(var(--chart-2))" },
+      { name: t.brother, "Accuracy": categoryHitRates.brotherPairHitRate, fill: "hsl(var(--chart-3))" },
+      { name: t.doublesLabel, "Accuracy": categoryHitRates.doubleNumberHitRate, fill: "hsl(var(--chart-4))" },
   ];
   
   const chartConfig: ChartConfig = {
-    "Likelihood": {
-        label: t.likelihood,
+    "Accuracy": {
+        label: `${t.likelihood} %`,
         color: "hsl(var(--foreground))"
     }
   };
 
+  const getMomentumBadge = (momentum: string) => {
+    switch (momentum) {
+        case 'Rising': return <Badge variant="secondary" className='bg-green-500/20 text-green-500 border-green-500/30'>{momentum}</Badge>;
+        case 'Stable': return <Badge variant="secondary" className='bg-blue-500/20 text-blue-500 border-blue-500/30'>{momentum}</Badge>;
+        default: return <Badge variant="outline">{momentum}</Badge>;
+    }
+  }
+
   return (
     <div className="space-y-6">
-       <Card>
-        <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-                <WandSparkles className="h-6 w-6 text-accent" />
-                <CardTitle className="text-xl">{t.executiveSummary}</CardTitle>
+      <div className='text-center'>
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">mm2D LIVE — Analysis Report</h2>
+        <p className="text-xs text-muted-foreground">
+          {new Date().toLocaleDateString(language === 'my' ? 'my-MM' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} | Data Window: Last 90 Sessions | Method: Rule Filtering + Statistical Validation
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-6">
+            <Card>
+                <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                    <FileText className="h-6 w-6 text-accent" />
+                    <CardTitle className="text-lg">{t.executiveSummary}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">{executiveSummary}</p>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                        <PieChart className="h-6 w-6 text-primary" />
+                        <CardTitle className="text-lg">{t.rulePerformance}</CardTitle>
+                    </div>
+                    <CardDescription>{t.ruleCategoryAccuracy}</CardDescription>
+                </CardHeader>
+                <CardContent className="pl-0">
+                    <ChartContainer config={chartConfig} className="h-52 w-full">
+                        <BarChart accessibilityLayer data={chartData} margin={{ top: 20, left: -10, right: 10 }}>
+                            <CartesianGrid vertical={false} />
+                            <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} fontSize={12} />
+                            <YAxis tickFormatter={(value) => `${value.toFixed(0)}%`} fontSize={12}/>
+                            <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                            <Bar dataKey="Accuracy" radius={5}>
+                                {chartData.map((entry) => (
+                                    <Cell key={`cell-${entry.name}`} fill={entry.fill} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
+        </div>
+        
+        <div className="space-y-6">
+            <Card>
+                <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                     <BarChart2 className="h-6 w-6 text-muted-foreground" />
+                    <CardTitle className="text-lg">{t.marketContext}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4 text-sm">
+                    <div className="flex items-center justify-between">
+                        <div className='flex items-center gap-2 text-muted-foreground'><ArrowLeftRight className="h-4 w-4"/> {t.previousResult}</div>
+                        <span className="font-mono font-bold text-lg">{marketContext.previousResult}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <div className='flex items-center gap-2 text-muted-foreground'><Hash className="h-4 w-4"/> {t.setOpenIndex}</div>
+                        <span className="font-mono font-bold">{marketContext.setOpenIndex}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <div className='flex items-center gap-2 text-muted-foreground'><Zap className="h-4 w-4"/> {t.powerDigits}</div>
+                        <span className="font-mono font-bold text-lg">{marketContext.powerDigits.join(' / ')}</span>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                    <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />
+                    <CardTitle className="text-lg">{t.finalSelection}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-4">
+                    <div className='flex items-start gap-3'>
+                        <Badge className='border-green-500 text-green-500 bg-green-500/10' variant="outline">{t.main}</Badge>
+                        <div className="flex flex-wrap gap-2">{finalSelection.main.map(n => <Badge className="text-lg" key={n}>{n}</Badge>)}</div>
+                    </div>
+                     <div className='flex items-start gap-3'>
+                        <Badge className='border-blue-500 text-blue-500 bg-blue-500/10' variant="outline">{t.strongSupport}</Badge>
+                        <div className="flex flex-wrap gap-2">{finalSelection.strongSupport.map(n => <Badge variant="secondary" className="text-md" key={n}>{n}</Badge>)}</div>
+                    </div>
+                     <div className='flex items-start gap-3'>
+                        <Badge variant="outline">{t.watchRotation}</Badge>
+                        <div className="flex flex-wrap gap-2">{finalSelection.watchRotation.map(n => <Badge variant="outline" className="text-sm" key={n}>{n}</Badge>)}</div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+      </div>
+      
+      <Card>
+        <CardHeader>
+            <div className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                <TrendingUp className="h-6 w-6 text-primary" />
+                <CardTitle className="text-lg">{t.topCandidates}</CardTitle>
             </div>
-          <CardDescription>{t.executiveSummarySubtitle}</CardDescription>
         </CardHeader>
-        <CardContent>
-            <p className="text-sm text-muted-foreground">{prediction}</p>
+        <CardContent className="px-0">
+             <div className="h-72 overflow-auto">
+                <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-card/80 backdrop-blur-sm">
+                        <TableRow>
+                            <TableHead className="w-20 text-center">{t.number}</TableHead>
+                            <TableHead className="text-center">{t.hitCount}</TableHead>
+                            <TableHead className="text-center">{t.likelihood}%</TableHead>
+                            <TableHead>{t.ruleOverlap}</TableHead>
+                            <TableHead className='text-center'>{t.momentum}</TableHead>
+                            <TableHead className="text-center w-24">{t.confidence}</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {topCandidates.map(c => (
+                            <TableRow key={c.number}>
+                                <TableCell className="text-center font-mono font-bold text-lg">{c.number}</TableCell>
+                                <TableCell className="text-center">{c.count}</TableCell>
+                                <TableCell className="text-center">{c.hitRate.toFixed(1)}%</TableCell>
+                                <TableCell><Badge variant="outline">{c.ruleOverlap}</Badge></TableCell>
+                                <TableCell className="text-center">{getMomentumBadge(c.momentum)}</TableCell>
+                                <TableCell className="text-center font-semibold text-lg">{c.confidence}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
         </CardContent>
       </Card>
       
-       <Card>
-        <CardHeader>
-            <div className="flex items-center gap-2">
-                <Percent className="h-6 w-6 text-primary" />
-                <CardTitle className="text-xl">{t.analysisBreakdown}</CardTitle>
+       <Card className="bg-amber-600/10 border-amber-600/20">
+        <CardHeader className="flex flex-row items-center gap-4 space-y-0 p-4">
+            <ShieldAlert className="h-5 w-5 text-amber-600 flex-shrink-0" />
+            <div className='flex-1'>
+                 <CardTitle className="text-base text-amber-500">{t.riskNotice}</CardTitle>
+                 <CardDescription className="text-amber-600/80 text-xs">{t.riskNoticeText}</CardDescription>
             </div>
-          <CardDescription>{t.analysisBreakdownSubtitle}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-            <div>
-                 <h4 className="font-semibold mb-2 text-base">{t.categoryPerformance}</h4>
-                 <ChartContainer config={chartConfig} className="h-52 w-full">
-                    <BarChart accessibilityLayer data={chartData} margin={{ top: 20 }}>
-                        <CartesianGrid vertical={false} />
-                        <XAxis dataKey="name" tickLine={false} tickMargin={10} axisLine={false} />
-                        <YAxis tickFormatter={(value) => `${value.toFixed(0)}%`} />
-                        <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent indicator="dot" />}
-                        />
-                        <Bar dataKey="Likelihood" radius={4}>
-                            <LabelList position="top" offset={4} className="fill-foreground" fontSize={12} formatter={(value: number) => `${value.toFixed(1)}%`} />
-                             {chartData.map((entry) => (
-                                <Cell key={`cell-${entry.name}`} fill={entry.fill} />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ChartContainer>
-            </div>
-            <div>
-                 <h4 className="font-semibold mb-2 text-base">{t.top10Candidates}</h4>
-                 <div className="h-64 overflow-auto rounded-md border">
-                    <Table>
-                        <TableHeader className="sticky top-0 bg-muted/50">
-                            <TableRow>
-                                <TableHead className="w-[100px]">{t.number}</TableHead>
-                                <TableHead>{t.hitCount}</TableHead>
-                                <TableHead className="text-right">{t.likelihood}</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {top10Candidates.map(item => (
-                                <TableRow key={item.number}>
-                                    <TableCell className="font-mono font-bold">{item.number}</TableCell>
-                                    <TableCell>{item.count}</TableCell>
-                                    <TableCell className="text-right">{item.hitRate.toFixed(2)}%</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                 </div>
-            </div>
-        </CardContent>
       </Card>
+
     </div>
   );
 };

@@ -1,6 +1,6 @@
 'use server';
 
-import type { AnalyzePatternsInput, AnalyzePatternsOutput } from './analysis-types';
+import type { AnalyzePatternsInput, AnalyzePatternsOutput, CandidateStats } from './analysis-types';
 
 function get2DNumber(setIndex: string, setValue: string): string {
     const cleanSetIndex = setIndex.replace(/,/g, '');
@@ -64,25 +64,29 @@ function performLocalAnalysis(input: AnalyzePatternsInput): AnalyzePatternsOutpu
     const previousResult = historicalNumbers[0];
     const last5Results = historicalNumbers.slice(0, 5);
     const last2Results = historicalNumbers.slice(0, 2);
+    const last28Results = historicalNumbers.slice(0, 28); // Approx 1 week for momentum
     const totalSessions = evaluationNumbers.length;
 
-    // --- STAGE 1: FILTERING ---
-    const candidates = {
-        powerDigits: new Set<string>(),
-        brotherPairs: new Set<string>(),
-        oneChange: new Set<string>(),
-        doubles: new Set<string>(),
+    // --- STAGE 1: FILTERING & RULE OVERLAP TRACKING ---
+    const candidatesOrigins: Record<string, Set<string>> = {};
+
+    const addCandidate = (num: string, rule: string) => {
+        if (!candidatesOrigins[num]) {
+            candidatesOrigins[num] = new Set();
+        }
+        candidatesOrigins[num].add(rule);
     };
 
     // 1. Power Digits
     const setLastDigit = liveData.setIndex.slice(-1);
     const prevDigit1 = previousResult[0];
     const prevDigit2 = previousResult[1];
-    const powerDigits = [...new Set([setLastDigit, prevDigit1, prevDigit2])];
+    // Heuristic: prioritize SET digit and first digit of previous result
+    const powerDigits = [...new Set([setLastDigit, prevDigit1, prevDigit2])].slice(0, 2); 
     for (const p of powerDigits) {
         for (let i = 0; i < 10; i++) {
-            candidates.powerDigits.add(`${p}${i}`);
-            candidates.powerDigits.add(`${i}${p}`);
+            addCandidate(`${p}${i}`, 'Power');
+            addCandidate(`${i}${p}`, 'Power');
         }
     }
 
@@ -90,93 +94,124 @@ function performLocalAnalysis(input: AnalyzePatternsInput): AnalyzePatternsOutpu
     const mirrorMap: { [key: string]: string } = { '0':'5', '5':'0', '1':'6', '6':'1', '2':'7', '7':'2', '3':'8', '8':'3', '4':'9', '9':'4' };
     const mirroredDigit1 = mirrorMap[prevDigit1];
     const mirroredDigit2 = mirrorMap[prevDigit2];
-    candidates.brotherPairs.add(`${mirroredDigit1}${mirroredDigit2}`);
-    candidates.brotherPairs.add(`${prevDigit1}${mirroredDigit2}`);
-    candidates.brotherPairs.add(`${mirroredDigit1}${prevDigit2}`);
+    addCandidate(`${mirroredDigit1}${mirroredDigit2}`, 'Brother');
+    addCandidate(`${prevDigit1}${mirroredDigit2}`, 'Brother');
+    addCandidate(`${mirroredDigit1}${prevDigit2}`, 'Brother');
 
     // 3. One-Change
     for (let i = 0; i < 10; i++) {
-        if (String(i) !== prevDigit2) candidates.oneChange.add(`${prevDigit1}${i}`);
-        if (String(i) !== prevDigit1) candidates.oneChange.add(`${i}${prevDigit2}`);
+        if (String(i) !== prevDigit2) addCandidate(`${prevDigit1}${i}`, '1-Change');
+        if (String(i) !== prevDigit1) addCandidate(`${i}${prevDigit2}`, '1-Change');
     }
 
     // 4. Double Numbers
     const hasDoubleInLast5 = last5Results.some(n => n[0] === n[1]);
     if (!hasDoubleInLast5) {
         for (let i = 0; i < 10; i++) {
-            candidates.doubles.add(`${i}${i}`);
+            addCandidate(`${i}${i}`, 'Double');
         }
     }
 
     // 5. Exclusion (Nat Khat)
-    const allCandidates = new Set([
-        ...candidates.powerDigits,
-        ...candidates.brotherPairs,
-        ...candidates.oneChange,
-        ...candidates.doubles,
-    ]);
-
     for (const num of last2Results) {
-        allCandidates.delete(num);
+        delete candidatesOrigins[num];
     }
-    const finalCandidates = Array.from(allCandidates).sort();
+    const finalCandidateNumbers = Object.keys(candidatesOrigins).sort();
     
-    const stage1_filtering = {
-        candidates: {
-            powerDigits: Array.from(candidates.powerDigits).sort(),
-            brotherPairs: Array.from(candidates.brotherPairs).sort(),
-            oneChange: Array.from(candidates.oneChange).sort(),
-            doubles: Array.from(candidates.doubles).sort(),
-        },
-        finalCandidates,
-        summary: `Generated candidate numbers using Power, Brother, One-Change, and Double rules. After excluding the last 2 results, ${finalCandidates.length} final candidates remain.`
-    };
-
     // --- STAGE 2: EVALUATION ---
     const evalCounts = evaluationNumbers.reduce((acc, num) => {
         acc[num] = (acc[num] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
 
-    const individualHitRates = finalCandidates.map(num => {
-        const count = evalCounts[num] || 0;
-        return {
-            number: num,
-            count: count,
-            hitRate: totalSessions > 0 ? (count / totalSessions) * 100 : 0,
-        };
-    });
-
+    // Helper to get all candidates for a category for hit rate calculation
+    const getCategoryCandidates = (rule: string) => {
+        const nums = new Set<string>();
+        if (rule === 'Power') {
+             for (const p of powerDigits) {
+                for (let i = 0; i < 10; i++) {
+                    nums.add(`${p}${i}`);
+                    nums.add(`${i}${p}`);
+                }
+            }
+        } else if (rule === 'Brother') {
+            nums.add(`${mirroredDigit1}${mirroredDigit2}`);
+            nums.add(`${prevDigit1}${mirroredDigit2}`);
+            nums.add(`${mirroredDigit1}${prevDigit2}`);
+        } else if (rule === '1-Change') {
+            for (let i = 0; i < 10; i++) {
+                if (String(i) !== prevDigit2) nums.add(`${prevDigit1}${i}`);
+                if (String(i) !== prevDigit1) nums.add(`${i}${prevDigit2}`);
+            }
+        } else if (rule === 'Double') {
+            if (!hasDoubleInLast5) {
+                for (let i = 0; i < 10; i++) {
+                    nums.add(`${i}${i}`);
+                }
+            }
+        }
+        return nums;
+    }
+    
+    // Count how many sessions had a winning number from this category
     const calculateCategoryHitRate = (candidateSet: Set<string>): number => {
         if (totalSessions === 0) return 0;
-        const hitSessions = evaluationNumbers.filter(num => candidateSet.has(num));
-        return (hitSessions.length / totalSessions) * 100;
+        const totalHits = evaluationNumbers.filter(num => candidateSet.has(num)).length;
+        return (totalHits / totalSessions) * 100;
     }
     
     const categoryHitRates = {
-        powerDigitHitRate: calculateCategoryHitRate(candidates.powerDigits),
-        brotherPairHitRate: calculateCategoryHitRate(candidates.brotherPairs),
-        oneChangeHitRate: calculateCategoryHitRate(candidates.oneChange),
-        doubleNumberHitRate: calculateCategoryHitRate(candidates.doubles),
+        powerDigitHitRate: calculateCategoryHitRate(getCategoryCandidates('Power')),
+        brotherPairHitRate: calculateCategoryHitRate(getCategoryCandidates('Brother')),
+        oneChangeHitRate: calculateCategoryHitRate(getCategoryCandidates('1-Change')),
+        doubleNumberHitRate: calculateCategoryHitRate(getCategoryCandidates('Double')),
+    };
+
+    // Top Candidate Stats Calculation
+    const topCandidates: CandidateStats[] = finalCandidateNumbers.map(num => {
+        const count = evalCounts[num] || 0;
+        const hitRate = totalSessions > 0 ? (count / totalSessions) * 100 : 0;
+        const overlapCount = candidatesOrigins[num]?.size || 0;
+        
+        let momentum = "Low";
+        if (last28Results.includes(num)) momentum = "Rising";
+        else if (historicalNumbers.includes(num)) momentum = "Stable";
+        
+        let confidence = (hitRate * 15) + (overlapCount * 20);
+        if (momentum === "Rising") confidence += 15;
+        if (momentum === "Stable") confidence += 5;
+        confidence = Math.min(Math.round(confidence), 99);
+
+        return {
+            number: num,
+            count: count,
+            hitRate: hitRate,
+            ruleOverlap: Array.from(candidatesOrigins[num]).join(' + '),
+            momentum: momentum,
+            confidence: confidence,
+        };
+    }).sort((a, b) => b.confidence - a.confidence).slice(0, 10);
+
+    const finalSelection = {
+        main: topCandidates.slice(0, 3).map(c => c.number),
+        strongSupport: topCandidates.slice(3, 6).map(c => c.number),
+        watchRotation: topCandidates.slice(6, 10).map(c => c.number),
     };
     
-    const stage2_evaluation = {
-        individualHitRates: individualHitRates.sort((a,b) => b.hitRate - a.hitRate),
-        categoryHitRates,
-        summary: "Calculated historical hit rates for each final candidate and for each rule category based on the last 90+ days of data."
+    const executiveSummary = `Current analysis generated ${finalCandidateNumbers.length} candidate numbers through rule-based filtering. After statistical evaluation and confidence scoring, ${topCandidates.length} numbers remain in the high-interest zone. Power digit influence appears ${categoryHitRates.powerDigitHitRate > 30 ? 'dominant' : 'moderate'} in recent sessions, while Brother and Double patterns show ${categoryHitRates.brotherPairHitRate + categoryHitRates.doubleNumberHitRate < 10 ? 'weak' : 'some'} consistency. Focus on numbers with multiple rule overlaps and stable historical frequency.`;
+
+    const marketContext = {
+        previousResult: previousResult,
+        setOpenIndex: liveData.setIndex,
+        powerDigits: powerDigits,
     };
 
-    // --- FINAL PREDICTION ---
-    const topCandidate = individualHitRates[0];
-    const prediction = topCandidate 
-        ? `Based on rule-based filtering and statistical analysis, the candidate with the highest historical hit rate is "${topCandidate.number}" (${topCandidate.hitRate.toFixed(2)}%). This synthesis suggests focusing on numbers that are both generated by the rules and have strong past performance.`
-        : "No final candidates were generated after filtering, so no prediction can be made.";
-
-
     return {
-        stage1_filtering,
-        stage2_evaluation,
-        prediction,
+        marketContext,
+        executiveSummary,
+        categoryHitRates,
+        topCandidates,
+        finalSelection
     };
 }
 
@@ -192,7 +227,6 @@ export async function handleAnalysis(input: AnalyzePatternsInput) {
         return {
             success: true,
             result: analysisResult,
-            fromCache: false,
         };
 
     } catch (error: any) {
