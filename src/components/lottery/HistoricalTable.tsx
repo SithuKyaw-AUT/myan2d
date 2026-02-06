@@ -16,7 +16,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { DailyResult } from '@/app/types';
-import { historicalData } from '@/lib/historical-data';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, query, limit, orderBy } from 'firebase/firestore';
+import { useMemoFirebase } from '@/hooks/use-memo-firebase';
+import { Skeleton } from '../ui/skeleton';
 
 function ResultCell({ twoD }: { twoD?: string | null }) {
   if (!twoD) {
@@ -26,40 +29,82 @@ function ResultCell({ twoD }: { twoD?: string | null }) {
 }
 
 export default function HistoricalTable() {
-  // Use the local data, showing the first 7 days to keep the UI consistent.
-  const results = historicalData.slice(0, 7);
+  const { firestore } = useFirestore();
+
+  const resultsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+      collection(firestore, 'lotteryResults'),
+      orderBy('date', 'desc'),
+      limit(7)
+    );
+  }, [firestore]);
+
+  const { data: results, loading } = useCollection(resultsQuery);
 
   const renderContent = () => {
+    if (loading) {
+      return Array.from({ length: 7 }).map((_, i) => (
+        <TableRow key={i}>
+          <TableCell>
+            <Skeleton className="h-5 w-16" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="mx-auto h-6 w-8" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="mx-auto h-6 w-8" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="mx-auto h-6 w-8" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="mx-auto h-6 w-8" />
+          </TableCell>
+        </TableRow>
+      ));
+    }
+
     if (!results || results.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-            No historical data available.
+          <TableCell
+            colSpan={5}
+            className="py-10 text-center text-muted-foreground"
+          >
+            No historical data found. Use the manager below to import it.
           </TableCell>
         </TableRow>
       );
     }
 
-    // The data is already sorted by date descending in the source file.
-    return (results as Omit<DailyResult, 'id'>[]).map((result) => (
-      <TableRow key={result.date}>
-        <TableCell className="font-medium text-muted-foreground">{(result.date as string).substring(5)}</TableCell>
-        <TableCell><ResultCell twoD={result.s11_00?.twoD} /></TableCell>
-        <TableCell><ResultCell twoD={result.s12_01?.twoD} /></TableCell>
-        <TableCell><ResultCell twoD={result.s15_00?.twoD} /></TableCell>
-        <TableCell><ResultCell twoD={result.s16_30?.twoD} /></TableCell>
+    return (results as DailyResult[]).map((result) => (
+      <TableRow key={result.id}>
+        <TableCell className="font-medium text-muted-foreground">
+          {(result.date as string).substring(5)}
+        </TableCell>
+        <TableCell>
+          <ResultCell twoD={result.s11_00?.twoD} />
+        </TableCell>
+        <TableCell>
+          <ResultCell twoD={result.s12_01?.twoD} />
+        </TableCell>
+        <TableCell>
+          <ResultCell twoD={result.s15_00?.twoD} />
+        </TableCell>
+        <TableCell>
+          <ResultCell twoD={result.s16_30?.twoD} />
+        </TableCell>
       </TableRow>
     ));
-  }
+  };
 
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle className="font-headline text-2xl">
-          Daily Results
-        </CardTitle>
+        <CardTitle className="font-headline text-2xl">Daily Results</CardTitle>
         <CardDescription>
-          Recent winning numbers from local data.
+          Recent winning numbers from Firestore.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -73,9 +118,7 @@ export default function HistoricalTable() {
               <TableHead className="text-center">4:30 PM</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {renderContent()}
-          </TableBody>
+          <TableBody>{renderContent()}</TableBody>
         </Table>
       </CardContent>
     </Card>
