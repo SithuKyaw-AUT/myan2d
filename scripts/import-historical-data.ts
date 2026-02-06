@@ -89,16 +89,12 @@ async function importData() {
         }
     }
     
-    const s12_01_result = resultsByTime['12:01:00'] || null;
-
     const dataToSet = {
         date: latestApiRecord.date,
         s11_00: resultsByTime['11:00:00'] || null,
-        s12_01: s12_01_result,
+        s12_01: resultsByTime['12:01:00'] || null,
+        s15_00: resultsByTime['15:00:00'] || null,
         s16_30: resultsByTime['16:30:00'] || null,
-        // Business logic: The 3:00 PM result is always a copy of the 12:01 PM result.
-        // We enforce this here to correct any potential upstream API errors.
-        s15_00: s12_01_result, 
     };
     
     // Using set with { merge: true } makes this an "upsert" operation.
