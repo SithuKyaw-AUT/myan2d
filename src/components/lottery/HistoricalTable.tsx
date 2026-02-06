@@ -47,7 +47,7 @@ export default function HistoricalTable() {
       return Array.from({ length: 5 }).map((_, i) => (
         <TableRow key={i}>
           <TableCell className="p-2">
-            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-5 w-24" />
           </TableCell>
           <TableCell className="p-2">
             <Skeleton className="mx-auto h-6 w-8" />
@@ -86,12 +86,12 @@ export default function HistoricalTable() {
         parseInt(dateParts[1]) - 1,
         parseInt(dateParts[2])
       );
-      const formattedDate = format(date, 'dd/MM/yyyy (EEEE)');
 
       return (
         <TableRow key={result.id}>
-          <TableCell className="p-2 font-medium text-muted-foreground whitespace-nowrap">
-            {formattedDate}
+          <TableCell className="p-2 text-center font-medium text-muted-foreground">
+            <div>{format(date, 'dd/MM/yyyy')}</div>
+            <div className="text-xs text-muted-foreground/80">({format(date, 'EEEE')})</div>
           </TableCell>
           <TableCell className="p-2">
             <ResultCell twoD={result.s11_00?.twoD} />
@@ -120,11 +120,11 @@ export default function HistoricalTable() {
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-card">
               <TableRow>
-                <TableHead className="px-2">Date</TableHead>
-                <TableHead className="text-center px-2">11:00 AM</TableHead>
-                <TableHead className="text-center px-2">12:01 PM</TableHead>
-                <TableHead className="text-center px-2">3:00 PM</TableHead>
-                <TableHead className="text-center px-2">4:30 PM</TableHead>
+                <TableHead className="text-center px-2">Date</TableHead>
+                <TableHead className="text-center px-2">11:00</TableHead>
+                <TableHead className="text-center px-2">12:01</TableHead>
+                <TableHead className="text-center px-2">3:00</TableHead>
+                <TableHead className="text-center px-2">4:30</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>{renderContent()}</TableBody>
