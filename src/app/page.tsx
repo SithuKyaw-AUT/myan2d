@@ -10,8 +10,8 @@ export default function Home() {
       <main className="container mx-auto max-w-3xl flex-1 px-4 py-8 md:px-6 md:py-12">
         <div className="grid grid-cols-1 gap-8">
           <LiveNumber />
-          <AiAnalysis />
           <HistoricalTable />
+          <AiAnalysis />
         </div>
       </main>
       <footer className="py-6 text-center text-sm text-muted-foreground">

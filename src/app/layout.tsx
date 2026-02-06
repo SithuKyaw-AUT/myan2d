@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'mm2D | Live 2D & AI Analysis',
+  title: 'mm2D live',
   description: 'Live 2D numbers from the Thai Stock Exchange (SET), with daily results and AI-powered pattern analysis and predictions.',
 };
 

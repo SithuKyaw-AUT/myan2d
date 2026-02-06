@@ -36,7 +36,7 @@ export default function HistoricalTable() {
     return query(
       collection(firestore, 'lottery_results'),
       orderBy('date', 'desc'),
-      limit(7)
+      limit(20)
     );
   }, [firestore]);
 
@@ -44,7 +44,7 @@ export default function HistoricalTable() {
 
   const renderContent = () => {
     if (isLoading) {
-      return Array.from({ length: 7 }).map((_, i) => (
+      return Array.from({ length: 5 }).map((_, i) => (
         <TableRow key={i}>
           <TableCell>
             <Skeleton className="h-5 w-16" />
@@ -72,7 +72,7 @@ export default function HistoricalTable() {
             colSpan={5}
             className="py-10 text-center text-muted-foreground"
           >
-            No historical data found. Use the manager below to import it.
+            No historical data found.
           </TableCell>
         </TableRow>
       );
@@ -108,18 +108,20 @@ export default function HistoricalTable() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[80px]">Date</TableHead>
-              <TableHead className="text-center">11:00 AM</TableHead>
-              <TableHead className="text-center">12:01 PM</TableHead>
-              <TableHead className="text-center">3:00 PM</TableHead>
-              <TableHead className="text-center">4:30 PM</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>{renderContent()}</TableBody>
-        </Table>
+        <div className="relative h-[18rem] overflow-auto">
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-card">
+              <TableRow>
+                <TableHead className="w-[80px]">Date</TableHead>
+                <TableHead className="text-center">11:00 AM</TableHead>
+                <TableHead className="text-center">12:01 PM</TableHead>
+                <TableHead className="text-center">3:00 PM</TableHead>
+                <TableHead className="text-center">4:30 PM</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>{renderContent()}</TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
