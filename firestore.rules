@@ -1,13 +1,12 @@
 /**
- * This ruleset enforces a strict, role-based security model where all data access
- * is restricted to authenticated users with administrative privileges. It is designed
- * for an internal data management application, not a public-facing service.
+ * This ruleset enforces a security model where data access is restricted to
+ * authenticated users. It is designed for a single-user or internal demo
+ * application, not a multi-tenant public service.
  *
  * Core Philosophy:
  * The security model operates on a "default deny" principle. Access is explicitly
- * granted only to users who have a custom claim `admin: true` on their
- * authentication token. There is no concept of public data or individual user
- * ownership in this system.
+ * granted only to users who are authenticated via Firebase Authentication (including
+ * anonymous users).
  *
  * Data Structure:
  * The data is organized into two distinct, top-level collections:
@@ -17,22 +16,17 @@
  * share the same security requirements.
  *
  * Key Security Decisions:
- * - Admin-Only Access: All operations (read, write, delete) on all collections
- *   are restricted to users verified as administrators via custom claims.
- * - No Public Access: Unauthenticated or non-admin users are denied all access.
- * - No User Data: The structure does not contain user-specific collections,
- *   aligning with the admin-centric design.
+ * - Authenticated Access Only: All operations (read, write, delete) on all
+ *   collections are restricted to any signed-in user. The app uses anonymous
+ *   authentication to ensure all visitors are signed in.
+ * - No Public Access: Unauthenticated users are denied all access.
+ * - No User Data Ownership: The structure does not contain user-specific
+ *   collections, as it is not a multi-user application.
  *
- * Denormalization for Authorization:
- * Authorization is based on a global role (admin) embedded in the user's auth
- * token (custom claims). This is the most performant method for role-based
- * access control as it requires no extra database reads to verify permissions.
- *
- * Structural Segregation:
- * The use of separate top-level collections (/lottery_results, /pattern_analyses)
- * for different data types with uniform security needs is a core design choice.
- * This simplifies rule management and prevents security logic from becoming
- * entangled.
+ * Authorization:
+ * Authorization is based simply on the existence of an authenticated user session
+ * (`request.auth != null`). This is the simplest security model for this
+ * type of application.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -49,69 +43,26 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the user has administrative privileges.
-     * This relies on a custom claim `admin: true` being set on the user's
-     * authentication token by a backend process.
-     */
-    function isAdmin() {
-      return isSignedIn() && request.auth.token.admin == true;
-    }
-
-    /**
-     * Ensures an update or delete operation targets an existing document.
-     * This prevents unauthorized actions on non-existent paths.
-     */
-    function documentExists() {
-      return resource != null;
-    }
-
     // ----------------------------------------------------------------------
     // Collection Rules
     // ----------------------------------------------------------------------
 
     /**
      * @description
-     *   Controls access to lottery result documents. Only users with an admin
-     *   role can read or write this data.
-     * @path
-     *   /lottery_results/{lotteryResultId}
-     * @allow
-     *   (create) An admin user (`auth.token.admin == true`) adds a new lottery result.
-     * @deny
-     *   (get) A non-admin authenticated user attempts to read a result document.
-     * @principle
-     *   Enforces a global admin role for all data access, treating the collection
-     *   as a protected internal resource.
+     *   Controls access to lottery result documents. Any authenticated user
+     *   (including anonymous users) can read or write this data.
      */
     match /lottery_results/{lotteryResultId} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && documentExists();
-      allow delete: if isAdmin() && documentExists();
+      allow read, write: if isSignedIn();
     }
 
     /**
      * @description
      *   Controls access to AI-generated pattern analysis documents. Access is
-     *   strictly limited to administrative users.
-     * @path
-     *   /pattern_analyses/{patternAnalysisId}
-     * @allow
-     *   (list) An admin user (`auth.token.admin == true`) lists all analysis documents.
-     * @deny
-     *   (delete) An anonymous user attempts to delete an analysis document.
-     * @principle
-     *   Enforces a global admin role for all data access, treating the collection
-     *   as a protected internal resource.
+     *   limited to any authenticated user.
      */
     match /pattern_analyses/{patternAnalysisId} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && documentExists();
-      allow delete: if isAdmin() && documentExists();
+      allow read, write: if isSignedIn();
     }
   }
 }
