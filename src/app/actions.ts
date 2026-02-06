@@ -51,6 +51,9 @@ export async function populateFirestoreFromApi() {
             ].join('-');
 
             try {
+                // Adding a delay to be polite to the API server and avoid rate-limiting
+                await new Promise(resolve => setTimeout(resolve, 100));
+
                 const response = await fetch(`https://api.thaistock2d.com/2d_result?date=${formattedApiDate}`, { cache: 'no-store' });
                 if (!response.ok) {
                     console.warn(`API request failed for date ${formattedApiDate} with status ${response.status}`);
@@ -89,6 +92,15 @@ export async function populateFirestoreFromApi() {
                 };
                 
                 let hasData = false;
+                
+                if (day['11:00'] && day['11:00'].set && day['11:00'].value) {
+                    hasData = true;
+                    dailyData.s11_00 = {
+                        set: day['11:00'].set,
+                        value: day['11:00'].value,
+                        twoD: get2DNumber(day['11:00'].set, day['11:00'].value)
+                    };
+                }
 
                 if (day['12:01'] && day['12:01'].set && day['12:01'].value) {
                     hasData = true;
