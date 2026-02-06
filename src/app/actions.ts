@@ -59,16 +59,25 @@ export async function populateFirestoreFromApi() {
 
                 const text = await response.text();
 
-                // Skip if the response is empty, whitespace, or just an empty JSON array "[]"
                 if (!text || text.trim() === '' || text.trim() === '[]') {
                     continue;
                 }
-
-                const day = JSON.parse(text);
                 
-                if (!day || !day.date) {
+                let parsedData;
+                try {
+                    parsedData = JSON.parse(text);
+                } catch (e) {
+                    console.warn(`JSON parsing failed for date ${formattedApiDate}:`, text);
+                    continue; 
+                }
+
+                // The API can return an object or an array with a single object.
+                const day = Array.isArray(parsedData) ? parsedData[0] : parsedData;
+                
+                if (!day || typeof day !== 'object' || !day.date) {
                     continue;
                 }
+
 
                 const docRef = doc(resultsCollection, formattedDocId);
                 const dailyData: DailyResult = {
@@ -81,7 +90,7 @@ export async function populateFirestoreFromApi() {
                 
                 let hasData = false;
 
-                if (day['12:01']) {
+                if (day['12:01'] && day['12:01'].set && day['12:01'].value) {
                     hasData = true;
                     dailyData.s12_01 = {
                         set: day['12:01'].set,
@@ -91,7 +100,7 @@ export async function populateFirestoreFromApi() {
                     dailyData.s15_00 = dailyData.s12_01; // Copy to 3:00 PM
                 }
                 
-                if (day['16:30']) {
+                if (day['16:30'] && day['16:30'].set && day['16:30'].value) {
                     hasData = true;
                     dailyData.s16_30 = {
                         set: day['16:30'].set,
