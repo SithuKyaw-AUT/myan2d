@@ -18,7 +18,7 @@ type ApiDailyResult = {
 
 // Main function to run the import
 async function importData() {
-    console.log('Starting data import process...');
+    console.log('Starting data import process to update latest results...');
 
     // 1. Initialize Firebase Admin SDK
     const serviceAccountKeyJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
@@ -55,39 +55,44 @@ async function importData() {
         return;
     }
 
-    // 3. Prepare and write data to Firestore using a batch
+    // --- Process only the latest day's results from the API ---
+    const latestRecord = data[0];
+
+    // 3. Prepare and write data to Firestore
     const batch = db.batch();
     const collectionRef = db.collection('lottery_results');
-    let recordsToProcess = 0;
-
-    for (const record of data) {
-        // Use the date string as the document ID for idempotency
-        const docId = record.date;
-        if (!docId) continue;
-
-        const docRef = collectionRef.doc(docId);
-        
-        // Transform the data to match the Firestore structure if needed.
-        // In this case, it's already a good match.
-        const dataToSet = {
-            date: record.date,
-            s11_00: record.s11_00 || null,
-            s12_01: record.s12_01 || null,
-            s15_00: record.s15_00 || null,
-            s16_30: record.s16_30 || null,
-        };
-
-        batch.set(docRef, dataToSet, { merge: true });
-        recordsToProcess++;
-    }
     
-    if (recordsToProcess === 0) {
-        console.log('No valid records to process. Exiting.');
+    const docId = latestRecord.date;
+    if (!docId) {
+        console.error('Error: Latest record from API has no date. Exiting.');
         return;
     }
+
+    const docRef = collectionRef.doc(docId);
+    
+    const dataToSet: Partial<ApiDailyResult> & { date: string } = {
+        date: latestRecord.date,
+        s11_00: latestRecord.s11_00 || null,
+        s12_01: latestRecord.s12_01 || null,
+        s16_30: latestRecord.s16_30 || null,
+    };
+    
+    // Business logic: The 3:00 PM result is always a copy of the 12:01 PM result.
+    // We enforce this here to correct any potential upstream API errors.
+    if (latestRecord.s12_01) {
+        console.log(`Ensuring 15:00 result is a copy of 12:01 result (${latestRecord.s12_01.twoD}).`);
+        dataToSet.s15_00 = latestRecord.s12_01;
+    } else {
+        dataToSet.s15_00 = latestRecord.s15_00 || null;
+    }
+
+    // Using set with { merge: true } makes this an "upsert" operation.
+    // If the document for today exists, it will be updated with the latest session data.
+    // If you delete the document, it will be recreated on the next run.
+    batch.set(docRef, dataToSet, { merge: true });
     
     // 4. Commit the batch
-    console.log(`Preparing to write ${recordsToProcess} documents to Firestore...`);
+    console.log(`Preparing to write/update document for date ${docId} to Firestore...`);
     await batch.commit();
     console.log('Batch write to Firestore completed successfully!');
     console.log('Data import process finished.');
