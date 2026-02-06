@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Database } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { writeBatch, collection, doc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import type { DailyResult, Result } from '@/app/types';
 
 // The JSON data provided by the user
@@ -29,20 +29,19 @@ export default function FirestoreManager() {
       return;
     }
 
-    toast({ title: 'Starting Import', description: 'Preparing data...' });
+    toast({ title: 'Starting Import', description: 'Parsing local data...' });
 
     try {
-      const batch = writeBatch(firestore);
       const resultsCollection = collection(firestore, 'lotteryResults');
-
       const data: { date: string; child: { time: string; set: string; value: string; twod: string }[] }[] = JSON.parse(historicalData);
 
       let successfulImports = 0;
+      let failedImports = 0;
 
-      for (const day of data) {
+      for (let i = 0; i < data.length; i++) {
+        const day = data[i];
         const docId = day.date;
-        const docRef = doc(resultsCollection, docId);
-
+        
         const dailyData: DailyResult = {
           date: docId,
           s11_00: null,
@@ -76,20 +75,39 @@ export default function FirestoreManager() {
         }
 
         if (hasData) {
-          batch.set(docRef, dailyData);
-          successfulImports++;
+            const docRef = doc(resultsCollection, docId);
+            try {
+                toast({
+                    title: 'Importing...',
+                    description: `Writing data for ${docId} (${i + 1} of ${data.length})`,
+                    duration: 1000,
+                });
+                await setDoc(docRef, dailyData);
+                successfulImports++;
+            } catch (docError: any) {
+                console.error(`Failed to write document ${docId}:`, docError);
+                failedImports++;
+                toast({
+                    variant: 'destructive',
+                    title: `Error writing ${docId}`,
+                    description: docError.message,
+                });
+            }
         }
       }
 
-      if (successfulImports > 0) {
-        toast({ title: 'Importing...', description: `Writing ${successfulImports} days of data to Firestore...` });
-        await batch.commit();
+      if (failedImports > 0) {
+          toast({
+            variant: 'destructive',
+            title: 'Import Partially Failed',
+            description: `Successfully imported ${successfulImports} days. Failed to import ${failedImports} days. Check console for details.`,
+          });
+      } else {
+          toast({
+            title: 'Import Successful',
+            description: `Successfully imported ${successfulImports} days of data. The historical table should now be populated.`,
+          });
       }
-
-      toast({
-        title: 'Import Successful',
-        description: `Successfully imported ${successfulImports} days of data. The historical table should now be populated.`,
-      });
 
     } catch (error: any) {
       console.error('Failed to populate Firestore from data:', error);
