@@ -78,8 +78,7 @@ export async function handleAnalysis() {
         const analysisResult = await analyzeSetPatterns({ numbers });
         return {
             success: true,
-            analysis: analysisResult.analysis,
-            prediction: analysisResult.prediction,
+            result: analysisResult,
         };
 
     } catch (error: any) {
