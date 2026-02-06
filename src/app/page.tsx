@@ -2,7 +2,6 @@ import Header from '@/components/layout/header';
 import LiveNumber from '@/components/lottery/LiveNumber';
 import HistoricalTable from '@/components/lottery/HistoricalTable';
 import AiAnalysis from '@/components/lottery/AiAnalysis';
-import FirestoreManager from '@/components/lottery/FirestoreManager';
 
 export default function Home() {
   return (
@@ -13,7 +12,6 @@ export default function Home() {
           <LiveNumber />
           <HistoricalTable />
           <AiAnalysis />
-          <FirestoreManager />
         </div>
       </main>
       <footer className="py-6 text-center text-sm text-muted-foreground">
