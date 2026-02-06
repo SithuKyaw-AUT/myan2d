@@ -1,0 +1,30 @@
+name: Import Historical 2D Data
+
+on:
+  workflow_dispatch: # Allows manual triggering from the Actions tab
+  schedule:
+    # Runs every day at 17:00 MMT (UTC+6:30), which is 10:30 UTC.
+    # This is after the market closes.
+    - cron: '30 10 * * 1-5' # Runs Mon-Fri
+
+jobs:
+  import-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use Node.js version 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run data import script
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: npx ts-node ./scripts/import-historical-data.ts
