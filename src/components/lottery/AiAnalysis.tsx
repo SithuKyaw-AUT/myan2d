@@ -58,6 +58,39 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { AnalyzePatternsOutput, AnalyzePatternsInput } from '@/app/analysis-types';
 
+const CACHE_KEY = 'mm2d_analysis_cache';
+const ANALYSIS_TIMES = ['11:00', '12:01', '15:00', '16:30'];
+
+function isCacheStale(cacheTimestamp: string | null): boolean {
+    if (!cacheTimestamp) return true;
+
+    try {
+        const lastAnalysisDate = new Date(cacheTimestamp);
+        const nowInMMT = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Yangon' }));
+        const lastAnalysisInMMT = new Date(lastAnalysisDate.toLocaleString('en-US', { timeZone: 'Asia/Yangon' }));
+
+        if (lastAnalysisInMMT.getDate() !== nowInMMT.getDate() ||
+            lastAnalysisInMMT.getMonth() !== nowInMMT.getMonth() ||
+            lastAnalysisInMMT.getFullYear() !== nowInMMT.getFullYear()) {
+            return true;
+        }
+
+        for (const timeStr of ANALYSIS_TIMES) {
+            const [hour, minute] = timeStr.split(':').map(Number);
+            const triggerTime = new Date(nowInMMT);
+            triggerTime.setHours(hour, minute, 0, 0);
+
+            if (lastAnalysisInMMT < triggerTime && nowInMMT >= triggerTime) {
+                return true;
+            }
+        }
+        return false;
+    } catch (error) {
+        console.error("Error checking cache staleness:", error);
+        return true;
+    }
+}
+
 
 export default function AiAnalysis() {
   const [isPending, startTransition] = useTransition();
@@ -70,6 +103,23 @@ export default function AiAnalysis() {
 
   const onAnalyze = useCallback(() => {
     startTransition(async () => {
+      try {
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        if (cachedData) {
+          const { result, timestamp } = JSON.parse(cachedData);
+          if (!isCacheStale(timestamp)) {
+            setAnalysisResult(result);
+            toast({
+              title: "Analysis Loaded from Cache",
+              description: `This analysis from ${new Date(timestamp).toLocaleTimeString()} is still fresh.`,
+            });
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to read cache:", error);
+      }
+
       if (!firestore) {
         toast({
           variant: 'destructive',
@@ -132,7 +182,21 @@ export default function AiAnalysis() {
       const result = await handleAnalysis(analysisInput);
 
       if (result.success && result.result) {
-        setAnalysisResult(result.result as AnalyzePatternsOutput);
+        const newResult = result.result as AnalyzePatternsOutput;
+        setAnalysisResult(newResult);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            result: newResult,
+            timestamp: new Date().toISOString()
+          }));
+        } catch (error) {
+            console.error("Failed to save analysis to cache:", error);
+            toast({
+                variant: 'destructive',
+                title: "Cache Warning",
+                description: "Could not save result to local cache."
+            });
+        }
       } else {
         toast({
           variant: 'destructive',
@@ -145,6 +209,23 @@ export default function AiAnalysis() {
   }, [firestore, toast, analysisResult]);
 
   useEffect(() => {
+    try {
+      const cachedData = localStorage.getItem(CACHE_KEY);
+      if (cachedData) {
+        const { result, timestamp } = JSON.parse(cachedData);
+        if (!isCacheStale(timestamp)) {
+          setAnalysisResult(result);
+        } else {
+          localStorage.removeItem(CACHE_KEY);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load cached analysis:", error);
+      localStorage.removeItem(CACHE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
     const handleNewResult = () => {
         onAnalyze();
     };
@@ -154,7 +235,7 @@ export default function AiAnalysis() {
     return () => {
         errorEmitter.off('new-result-saved', handleNewResult);
     };
-  }, [onAnalyze, toast]);
+  }, [onAnalyze]);
   
   const handleDownload = () => {
     if (!analysisResult) {
