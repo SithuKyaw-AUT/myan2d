@@ -1,100 +1,157 @@
 'use server';
 /**
- * @fileOverview Analyzes 2D number patterns from historical data and provides predictions.
+ * @fileOverview Analyzes 2D number patterns using a two-stage process simulating Myanmar lottery analysis methods.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 
-const AnalyzeSetPatternsInputSchema = z.object({
-  // The numbers are pre-calculated and passed in.
-  numbers: z.array(z.string().length(2)).describe('An array of 2D numbers from the historical data.'),
-});
-export type AnalyzeSetPatternsInput = z.infer<typeof AnalyzeSetPatternsInputSchema>;
-
-const DigitFrequencySchema = z.object({
-  digit: z.string().describe("The digit (0-9)"),
-  count: z.number().describe("How many times the digit appeared."),
+const LiveDataSchema = z.object({
+  setIndex: z.string().describe("The live SET index, e.g., '1,346.23'"),
+  value: z.string().describe("The live SET value, e.g., '57,388.58'"),
+  twoD: z.string().length(2).describe("The live 2D number, e.g., '38'"),
+  lastUpdated: z.string(),
 });
 
-const PairDigitFrequencySchema = z.object({
-  pair: z.string().describe("The pair digit (sum of two digits, last digit) (0-9)"),
-  count: z.number().describe("How many times this pair digit appeared."),
+const AnalyzePatternsInputSchema = z.object({
+  liveData: LiveDataSchema.describe("The most recent live data including the SET index and the resulting 2D number."),
+  historicalNumbers: z.array(z.string().length(2)).describe('An array of 2D numbers from the last 30+ days for filtering.'),
+  evaluationNumbers: z.array(z.string().length(2)).describe('An array of all 2D numbers from the last 90+ days for statistical evaluation.'),
 });
+export type AnalyzePatternsInput = z.infer<typeof AnalyzePatternsInputSchema>;
 
 
-const AnalysisSchema = z.object({
-  oddEven: z.object({
-    odd: z.number().describe("Count of odd numbers."),
-    even: z.number().describe("Count of even numbers."),
-  }).describe("Analysis of odd vs even numbers."),
-  highLow: z.object({
-    high: z.number().describe("Count of numbers in the high range (50-99)."),
-    low: z.number().describe("Count of numbers in the low range (00-49)."),
-  }).describe("Analysis of high vs low numbers."),
-  digitFrequency: z.array(DigitFrequencySchema).length(10).describe("Frequency of each digit from 0 to 9, sorted by digit ascending."),
-  pairDigitFrequency: z.array(PairDigitFrequencySchema).length(10).describe("Frequency of each pair digit (sum of digits) from 0 to 9, sorted by pair ascending."),
-  repeatingNumbers: z.object({
-      count: z.number().describe("Count of repeating numbers (e.g., 11, 22).")
-  }).describe("Analysis of repeating numbers."),
-  summary: z.string().describe("A concise, one-paragraph summary of the key findings from the analysis."),
+const CandidateNumbersSchema = z.object({
+    powerDigits: z.array(z.string().length(2)).describe("Candidate numbers generated from the Power Digits rule."),
+    brotherPairs: z.array(z.string().length(2)).describe("Candidate numbers generated from the Brother/Mirror rule."),
+    oneChange: z.array(z.string().length(2)).describe("Candidate numbers generated from the One-Change rule."),
+    doubles: z.array(z.string().length(2)).describe("Candidate double numbers, if applicable."),
 });
 
-const PredictionSchema = z.object({
-    hotNumbers: z.array(z.string().length(2)).describe("An array of three numbers that are predicted to be 'hot' or likely to appear soon."),
-    coldNumbers: z.array(z.string().length(2)).describe("An array of three numbers that are 'cold' or haven't appeared in a while, making them potentially due."),
-    keyDigit: z.string().length(1).describe("A single digit that is predicted to be significant in the next draw."),
-    predictedPairDigit: z.string().length(1).describe("The predicted pair digit (sum of digits) for the next draw."),
-    summary: z.string().describe("A detailed, one-paragraph summary explaining the predictions for the next draw, combining the analysis to form a coherent forecast.")
+const HitRateSchema = z.object({
+    number: z.string().length(2),
+    count: z.number().describe("How many times the number appeared in the evaluation dataset."),
+    hitRate: z.number().describe("The hit rate percentage for this number."),
 });
 
-const AnalyzeSetPatternsOutputSchema = z.object({
-  analysis: AnalysisSchema,
-  prediction: PredictionSchema,
+const CategoryHitRateSchema = z.object({
+    powerDigitHitRate: z.number(),
+    brotherPairHitRate: z.number(),
+    oneChangeHitRate: z.number(),
+    doubleNumberHitRate: z.number(),
 });
-export type AnalyzeSetPatternsOutput = z.infer<typeof AnalyzeSetPatternsOutputSchema>;
+
+const AnalyzePatternsOutputSchema = z.object({
+  stage1_filtering: z.object({
+    candidates: CandidateNumbersSchema,
+    finalCandidates: z.array(z.string().length(2)).describe("The final list of candidate numbers after applying all filtering and exclusion rules."),
+    summary: z.string().describe("A brief summary of the filtering process and the final candidates."),
+  }),
+  stage2_evaluation: z.object({
+      individualHitRates: z.array(HitRateSchema).describe("The hit rate statistics for each final candidate number."),
+      categoryHitRates: CategoryHitRateSchema.describe("The aggregate hit rate for each generation rule."),
+      summary: z.string().describe("A summary of the statistical evaluation, highlighting high-performing numbers and categories."),
+  }),
+  prediction: z.string().describe("A final, one-paragraph prediction for the next draw, synthesizing the results from both stages."),
+});
+export type AnalyzePatternsOutput = z.infer<typeof AnalyzePatternsOutputSchema>;
 
 
 export async function analyzeSetPatterns(
-  input: AnalyzeSetPatternsInput
-): Promise<AnalyzeSetPatternsOutput> {
+  input: AnalyzePatternsInput
+): Promise<AnalyzePatternsOutput> {
   return analyzeSetPatternsFlow(input);
 }
 
 const analyzeSetPatternsFlow = ai.defineFlow(
   {
     name: 'analyzeSetPatternsFlow',
-    inputSchema: AnalyzeSetPatternsInputSchema,
-    outputSchema: AnalyzeSetPatternsOutputSchema,
+    inputSchema: AnalyzePatternsInputSchema,
+    outputSchema: AnalyzePatternsOutputSchema,
   },
-  async ({ numbers }) => {
-    const prompt = `You are a lottery analysis expert specializing in the Thai SET-based 2D lottery.
-Your task is to analyze the provided historical 2D numbers and return a structured JSON object matching the requested output schema.
+  async ({ liveData, historicalNumbers, evaluationNumbers }) => {
+    // We need the previous result, which is the first in the historical list
+    const previousResult = historicalNumbers[0]; 
+    // Last 5 results for double number check
+    const last5Results = historicalNumbers.slice(0, 5);
+    // Last 2 results for Nat Khat check
+    const last2Results = historicalNumbers.slice(0, 2);
+    // Total sessions for evaluation
+    const totalSessions = evaluationNumbers.length;
 
-Historical Data (last 100 results):
-${JSON.stringify(numbers.slice(-100))}
+    const prompt = `You are an expert Myanmar 2D lottery analysis engine. Your task is to perform a two-stage analysis based on the provided data and rules.
 
-Analysis:
-Please perform the following detailed analysis on the provided data:
-1.  **Odd vs. Even**: Count the total number of odd 2D numbers and even 2D numbers. An even number is one that ends in 0, 2, 4, 6, 8.
-2.  **High/Low**: Count numbers in the low range (00-49) and high range (50-99).
-3.  **Digit Frequency**: Count the occurrences of each digit (0 through 9) across all numbers. The result must be an array of 10 objects, one for each digit from "0" to "9", sorted by digit.
-4.  **Pair Digit (ဘရိတ်) Frequency**: For each 2D number, sum its two digits. The "pair digit" is the last digit of that sum (e.g., for '58', sum is 13, pair digit is '3'; for '07', sum is 7, pair digit is '7'). Count the frequency of each pair digit from 0 to 9. The result must be an array of 10 objects, sorted by pair digit.
-5.  **Repeating Numbers**: Count how many times a repeating number (e.g., 00, 11, 22) has appeared.
-6.  **Analysis Summary**: Write a concise, one-paragraph summary of the most important findings from your analysis (e.g., "The data shows a strong trend towards low, even numbers, with the digit 4 appearing most frequently. Pair digit 7 is currently dominant...").
+**INPUT DATA:**
+*   Most Recent Live Data: ${JSON.stringify(liveData)}
+*   Previous 2D Result: "${previousResult}"
+*   Historical Data (for filtering, last ~30 days): ${JSON.stringify(historicalNumbers)}
+*   Historical Data (for evaluation, last ~90 days, ${totalSessions} total sessions): (Data is too large to display, but use the provided counts and hit rates you will calculate).
 
-Prediction:
-Based on your complete analysis, provide the following detailed predictions:
-1.  **Hot Numbers**: Suggest exactly three 2D numbers that have appeared frequently and are likely to appear again.
-2.  **Cold Numbers**: Suggest exactly three 2D numbers that have not appeared in a long time and might be due for a draw.
-3.  **Key Digit**: Predict a single digit that is most likely to appear in the next draw, based on frequency and trends.
-4.  **Predicted Pair Digit**: Predict the most likely pair digit (ဘရိတ်) for the next draw.
-5.  **Prediction Summary**: Provide a detailed, one-paragraph summary that explains your predictions. It should connect your analysis (trends, frequencies, pairs) to your chosen numbers and digits, forming a coherent forecast for the next draw.
+---
+
+**STAGE 1: RULE-BASED FILTERING**
+Generate a set of candidate numbers by applying the following Myanmar 2D analysis concepts.
+
+**RULES:**
+1.  **POWER DIGITS**:
+    *   The last digit of the SET open index is a power digit. (From SET Index "${liveData.setIndex}", the last digit is "${liveData.setIndex.slice(-1)}").
+    *   The two digits of the previous result are potential power digits. (From "${previousResult}", the digits are "${previousResult[0]}" and "${previousResult[1]}").
+    *   From these three potential power digits, select the **two most promising** ones. Generate all 2D combinations containing at least one of these two selected power digits (e.g., if power digits are 1 and 2, generate 1X, X1, 2X, X2).
+
+2.  **BROTHER (MIRROR)**:
+    *   The mirror mapping is: 0↔5, 1↔6, 2↔7, 3↔8, 4↔9.
+    *   Generate the direct mirror pair of the previous result "${previousResult}".
+    *   Also generate combinations where one digit from the previous result is mirrored and the other stays the same.
+
+3.  **ONE-CHANGE**:
+    *   Generate all numbers by changing only one digit from the previous result "${previousResult}". For example, if the previous result is '25', generate '20', '21', '22', '23', '24', '26', '27', '28', '29' and '05', '15', '35', '45', '55', '65', '75', '85', '95'.
+
+4.  **DOUBLE NUMBERS**:
+    *   The last 5 results were: ${JSON.stringify(last5Results)}.
+    *   Check if any of these are double numbers (e.g., 00, 11, 22...).
+    *   If **NO** double number appeared in the last 5 results, include all double numbers (00, 11, ..., 99) as candidates. Otherwise, include none.
+
+5.  **EXCLUSION (NAT KHAT)**:
+    *   The last 2 consecutive results were: ${JSON.stringify(last2Results)}.
+    *   From the candidates generated by rules 1-4, **remove** any number that appeared in the last 2 results.
+
+**OUTPUT for STAGE 1:**
+*   List the candidate numbers generated for each rule (powerDigits, brotherPairs, oneChange, doubles).
+*   List the 'finalCandidates' after applying the exclusion rule.
+*   Provide a brief summary of the filtering process.
+
+---
+
+**STAGE 2: STATISTICAL EVALUATION**
+Evaluate the 'finalCandidates' from Stage 1 using the full 90-day evaluation dataset (${totalSessions} total sessions).
+
+**TASKS:**
+1.  **Individual Hit Rates**: For each number in 'finalCandidates':
+    *   Count its occurrences in the full \`evaluationNumbers\` dataset.
+    *   Calculate its hit rate: \`(count / ${totalSessions}) * 100\`. Format the rate to 2 decimal places.
+
+2.  **Category Hit Rates**: For each original candidate list (before exclusion):
+    *   Count how many times any number from that list appeared in the \`evaluationNumbers\` dataset. This is the total number of 'hits' for the category.
+    *   Calculate the category hit rate: \`(total category hits / ${totalSessions}) * 100\`. Format the rate to 2 decimal places.
+
+**FORMULA:**
+*   Hit Rate (%) = (Number of hits / Total Sessions) * 100
+
+**OUTPUT for STAGE 2:**
+*   Provide 'individualHitRates' for each final candidate.
+*   Provide 'categoryHitRates' for power digits, brother pairs, one-change, and double numbers.
+*   Provide a summary of the statistical findings.
+
+---
+
+**FINAL PREDICTION:**
+Based on BOTH stages, provide a concise, one-paragraph prediction for the next draw. Synthesize the findings from the rule-based filtering and the statistical evaluation to justify your prediction.
 `;
 
     const { output } = await ai.generate({
         prompt,
-        output: { schema: AnalyzeSetPatternsOutputSchema }
+        output: { schema: AnalyzePatternsOutputSchema },
+        model: 'googleai/gemini-2.5-pro', // Using a more powerful model for this complex task
     });
     
     return output!;

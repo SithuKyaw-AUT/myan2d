@@ -1,6 +1,6 @@
 'use server';
 
-import { analyzeSetPatterns } from '@/ai/flows/analyze-patterns';
+import { analyzeSetPatterns, AnalyzePatternsInput } from '@/ai/flows/analyze-patterns';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
@@ -87,13 +87,13 @@ export async function getLiveSetData() {
   }
 }
 
-export async function handleAnalysis(numbers: string[]) {
+export async function handleAnalysis(input: AnalyzePatternsInput) {
     try {
-        if (numbers.length === 0) {
+        if (input.historicalNumbers.length === 0 || input.evaluationNumbers.length === 0) {
             return { success: false, error: "Not enough data for analysis." };
         }
         
-        const dataString = JSON.stringify(numbers);
+        const dataString = JSON.stringify(input);
         const currentDataHash = createHash('sha256').update(dataString).digest('hex');
 
         const cache = await getAnalysisCache();
@@ -105,7 +105,7 @@ export async function handleAnalysis(numbers: string[]) {
             };
         }
         
-        const analysisResult = await analyzeSetPatterns({ numbers });
+        const analysisResult = await analyzeSetPatterns(input);
         
         await setAnalysisCache({
             dataHash: currentDataHash,
