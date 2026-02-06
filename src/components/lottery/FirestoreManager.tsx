@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Database } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import type { DailyResult, Result } from '@/app/types';
 
 // The JSON data provided by the user
@@ -29,17 +29,16 @@ export default function FirestoreManager() {
       return;
     }
 
-    toast({ title: 'Starting Import', description: 'Parsing local data...' });
+    toast({ title: 'Starting Import', description: 'Preparing to write data in a single batch...' });
 
     try {
+      const batch = writeBatch(firestore);
       const resultsCollection = collection(firestore, 'lotteryResults');
       const data: { date: string; child: { time: string; set: string; value: string; twod: string }[] }[] = JSON.parse(historicalData);
 
-      let successfulImports = 0;
-      let failedImports = 0;
+      let documentsToImport = 0;
 
-      for (let i = 0; i < data.length; i++) {
-        const day = data[i];
+      for (const day of data) {
         const docId = day.date;
         
         const dailyData: DailyResult = {
@@ -76,37 +75,23 @@ export default function FirestoreManager() {
 
         if (hasData) {
             const docRef = doc(resultsCollection, docId);
-            try {
-                toast({
-                    title: 'Importing...',
-                    description: `Writing data for ${docId} (${i + 1} of ${data.length})`,
-                    duration: 1000,
-                });
-                await setDoc(docRef, dailyData);
-                successfulImports++;
-            } catch (docError: any) {
-                console.error(`Failed to write document ${docId}:`, docError);
-                failedImports++;
-                toast({
-                    variant: 'destructive',
-                    title: `Error writing ${docId}`,
-                    description: docError.message,
-                });
-            }
+            batch.set(docRef, dailyData);
+            documentsToImport++;
         }
       }
 
-      if (failedImports > 0) {
-          toast({
-            variant: 'destructive',
-            title: 'Import Partially Failed',
-            description: `Successfully imported ${successfulImports} days. Failed to import ${failedImports} days. Check console for details.`,
-          });
+      if (documentsToImport > 0) {
+        await batch.commit();
+        toast({
+          title: 'Import Successful',
+          description: `Successfully imported ${documentsToImport} days of data. The historical table should now be populated.`,
+        });
       } else {
-          toast({
-            title: 'Import Successful',
-            description: `Successfully imported ${successfulImports} days of data. The historical table should now be populated.`,
-          });
+        toast({
+          variant: 'destructive',
+          title: 'No Data to Import',
+          description: 'The provided data did not contain any valid results to import.',
+        });
       }
 
     } catch (error: any) {
