@@ -35,7 +35,22 @@ export default function FirestoreManager() {
         batch.set(docRef, day);
       });
 
-      await batch.commit();
+      toast({
+        title: 'Importing...',
+        description: `Writing ${historicalData.length} days of data to Firestore. This may take a moment...`,
+      });
+
+      const commitPromise = batch.commit();
+
+      // Add a 30-second timeout
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => {
+          reject(new Error('The import process timed out after 30 seconds. This may be due to an invalid Firebase configuration or network issues. Please check your firebase/config.ts file and your connection.'));
+        }, 30000)
+      );
+      
+      await Promise.race([commitPromise, timeoutPromise]);
+
 
       toast({
         title: 'Import Successful',
