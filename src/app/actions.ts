@@ -1,9 +1,9 @@
 'use server';
 
 import { analyzeSetPatterns } from '@/ai/flows/analyze-patterns';
-import { getFirestore, collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import type { DailyResult, Result } from './types';
+import type { DailyResult } from './types';
 
 
 function get2DNumber(setIndex: string, setValue: string): string {
@@ -18,71 +18,6 @@ function get2DNumber(setIndex: string, setValue: string): string {
 
     return `${firstDigit}${secondDigit}`;
 }
-
-export async function populateFirestoreFromData(jsonData: string) {
-    try {
-        const { firestore } = initializeFirebase();
-        const batch = writeBatch(firestore);
-        const resultsCollection = collection(firestore, 'lotteryResults');
-
-        const data: { date: string; child: { time: string; set: string; value: string; twod: string }[] }[] = JSON.parse(jsonData);
-
-        let successfulImports = 0;
-
-        for (const day of data) {
-            const docId = day.date;
-            const docRef = doc(resultsCollection, docId);
-
-            const dailyData: DailyResult = {
-                date: docId,
-                s11_00: null,
-                s12_01: null,
-                s15_00: null,
-                s16_30: null,
-            };
-
-            let hasData = false;
-            for (const result of day.child) {
-                const resultObj: Result = {
-                    set: result.set,
-                    value: result.value,
-                    twoD: result.twod,
-                };
-                hasData = true;
-                switch (result.time) {
-                    case '11:00:00':
-                        dailyData.s11_00 = resultObj;
-                        break;
-                    case '12:01:00':
-                        dailyData.s12_01 = resultObj;
-                        break;
-                    case '15:00:00':
-                        dailyData.s15_00 = resultObj;
-                        break;
-                    case '16:30:00':
-                        dailyData.s16_30 = resultObj;
-                        break;
-                }
-            }
-
-            if (hasData) {
-                batch.set(docRef, dailyData);
-                successfulImports++;
-            }
-        }
-
-        if (successfulImports > 0) {
-            await batch.commit();
-        }
-
-        return { success: true, message: `Successfully imported ${successfulImports} days of data.` };
-
-    } catch (error: any) {
-        console.error('Failed to populate Firestore from data:', error);
-        return { success: false, error: error.message || 'An unexpected error occurred during import.' };
-    }
-}
-
 
 export async function getLiveSetData() {
   try {
