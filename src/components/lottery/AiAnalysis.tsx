@@ -26,7 +26,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { BrainCircuit, Loader2, Percent, WandSparkles } from 'lucide-react';
+import { BrainCircuit, Download, Loader2, Percent, WandSparkles } from 'lucide-react';
 import { getLiveSetData, handleAnalysis } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
@@ -117,7 +117,6 @@ export default function AiAnalysis() {
           evaluationNumbers,
       };
 
-      // No Caching: Always fetch fresh analysis
       const result = await handleAnalysis(analysisInput);
 
       if (result.success && result.result) {
@@ -145,6 +144,53 @@ export default function AiAnalysis() {
         errorEmitter.off('new-result-saved', handleNewResult);
     };
   }, [onAnalyze, toast]);
+  
+  const handleDownload = () => {
+    if (!analysisResult) {
+      toast({
+        variant: 'destructive',
+        title: 'Download Failed',
+        description: 'No analysis data to download.',
+      });
+      return;
+    }
+
+    const t = translations[language];
+    const { stage2_evaluation, prediction } = analysisResult;
+    const top10Candidates = stage2_evaluation.individualHitRates.slice(0, 10);
+    const categoryRates = stage2_evaluation.categoryHitRates;
+
+    let content = `mm2D Live - Analysis Report\n`;
+    content += `=================================\n\n`;
+
+    content += `--- ${t.executiveSummary} ---\n`;
+    content += `${prediction}\n\n`;
+
+    content += `--- ${t.analysisBreakdown} ---\n\n`;
+
+    content += `* ${t.categoryPerformance} *\n`;
+    content += `- ${t.power}: ${categoryRates.powerDigitHitRate.toFixed(2)}%\n`;
+    content += `- ${t.brother}: ${categoryRates.brotherPairHitRate.toFixed(2)}%\n`;
+    content += `- ${t.oneChangeLabel}: ${categoryRates.oneChangeHitRate.toFixed(2)}%\n`;
+    content += `- ${t.doublesLabel}: ${categoryRates.doubleNumberHitRate.toFixed(2)}%\n\n`;
+
+    content += `* ${t.top10Candidates} *\n`;
+    content += `${t.number.padEnd(10)} | ${t.hitCount.padEnd(15)} | ${t.likelihood}\n`;
+    content += `${'-'.repeat(10)} | ${'-'.repeat(15)} | ${'-'.repeat(12)}\n`;
+    top10Candidates.forEach(item => {
+      content += `${item.number.padEnd(10)} | ${String(item.count).padEnd(15)} | ${item.hitRate.toFixed(2)}%\n`;
+    });
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mm2d-analysis-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
 
   const renderContent = () => {
@@ -183,9 +229,14 @@ export default function AiAnalysis() {
           </div>
           <div className="flex items-center gap-2">
              {analysisResult && (
+                <>
                  <Button variant="outline" size="sm" onClick={() => setLanguage(lang => lang === 'en' ? 'my' : 'en')}>
                     {language === 'en' ? '🇲🇲' : '🇬🇧'}
                 </Button>
+                 <Button variant="outline" size="sm" onClick={handleDownload} aria-label="Download analysis">
+                    <Download className="h-4 w-4" />
+                </Button>
+                </>
             )}
           </div>
         </div>
