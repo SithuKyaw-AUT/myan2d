@@ -90,7 +90,7 @@ export default function HistoricalTable() {
       return (
         <TableRow key={result.id}>
           <TableCell className="p-2 text-center font-medium text-muted-foreground">
-            <div>{format(date, 'dd/MM/yyyy')}</div>
+            <div>{format(date, 'dd/MM/yy')}</div>
             <div className="text-xs text-muted-foreground/80">({format(date, 'EEEE')})</div>
           </TableCell>
           <TableCell className="p-2">

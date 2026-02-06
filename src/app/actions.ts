@@ -1,7 +1,6 @@
 'use server';
 
 import { analyzeSetPatterns } from '@/ai/flows/analyze-patterns';
-import { historicalData } from '@/lib/historical-data';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
@@ -88,21 +87,13 @@ export async function getLiveSetData() {
   }
 }
 
-export async function handleAnalysis() {
+export async function handleAnalysis(numbers: string[]) {
     try {
-        const numbers: string[] = [];
-        historicalData.forEach((day) => {
-            if (day.s11_00?.twoD) numbers.push(day.s11_00.twoD);
-            if (day.s12_01?.twoD) numbers.push(day.s12_01.twoD);
-            if (day.s15_00?.twoD) numbers.push(day.s15_00.twoD);
-            if (day.s16_30?.twoD) numbers.push(day.s16_30.twoD);
-        });
-        
         if (numbers.length === 0) {
-            return { success: false, error: "Not enough data in local file for analysis." };
+            return { success: false, error: "Not enough data for analysis." };
         }
         
-        const dataString = JSON.stringify(historicalData);
+        const dataString = JSON.stringify(numbers);
         const currentDataHash = createHash('sha256').update(dataString).digest('hex');
 
         const cache = await getAnalysisCache();

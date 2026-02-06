@@ -66,6 +66,7 @@ export default function LiveNumber() {
           title: 'Result Saved!',
           description: `Today's ${timeKey} result (${result.twoD}) has been saved.`,
         });
+        errorEmitter.emit('new-result-saved');
       })
       .catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({

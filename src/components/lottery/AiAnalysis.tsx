@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useCallback, useEffect } from 'react';
 import {
   Bar,
   BarChart,
@@ -36,6 +36,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
 import { Separator } from '../ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { useFirestore } from '@/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { DailyResult } from '@/app/types';
+import { errorEmitter } from '@/firebase/error-emitter';
 
 // Define the types for the structured analysis data
 type AnalysisResult = {
@@ -63,19 +67,52 @@ export default function AiAnalysis() {
     null
   );
   const [isFromCache, setIsFromCache] = useState(false);
+  const firestore = useFirestore();
 
-  const onAnalyze = () => {
-    setIsFromCache(false);
+  const onAnalyze = useCallback(() => {
     startTransition(async () => {
-      const result = await handleAnalysis();
+      if (!firestore) {
+        toast({
+          variant: 'destructive',
+          title: 'Analysis Failed',
+          description: 'Firestore is not available.',
+        });
+        return;
+      }
+
+      // Fetch all documents from the lottery_results collection
+      const querySnapshot = await getDocs(
+        collection(firestore, 'lottery_results')
+      );
+
+      const numbers: string[] = [];
+      querySnapshot.forEach((doc) => {
+        const day = doc.data() as DailyResult;
+        if (day.s11_00?.twoD) numbers.push(day.s11_00.twoD);
+        if (day.s12_01?.twoD) numbers.push(day.s12_01.twoD);
+        if (day.s15_00?.twoD) numbers.push(day.s15_00.twoD);
+        if (day.s16_30?.twoD) numbers.push(day.s16_30.twoD);
+      });
+
+      if (numbers.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Analysis Failed',
+          description: 'No historical data found in Firestore to analyze.',
+        });
+        return;
+      }
+
+      const result = await handleAnalysis(numbers);
+
       if (result.success && result.result) {
         setAnalysisResult(result.result as AnalysisResult);
         if (result.fromCache) {
-            setIsFromCache(true);
-            toast({
-                title: 'Loaded from Cache',
-                description: 'Analysis results are up-to-date.',
-            });
+          setIsFromCache(true);
+          toast({
+            title: 'Loaded from Cache',
+            description: 'Analysis results are up-to-date.',
+          });
         }
       } else {
         setAnalysisResult(null);
@@ -87,7 +124,21 @@ export default function AiAnalysis() {
         });
       }
     });
-  };
+  }, [firestore, toast]);
+
+  useEffect(() => {
+    const handleNewResult = () => {
+        toast({ title: 'New result saved!', description: 'Automatically updating analysis...' });
+        onAnalyze();
+    };
+
+    errorEmitter.on('new-result-saved', handleNewResult);
+
+    return () => {
+        errorEmitter.off('new-result-saved', handleNewResult);
+    };
+  }, [onAnalyze, toast]);
+
 
   const renderContent = () => {
     if (isPending) {
