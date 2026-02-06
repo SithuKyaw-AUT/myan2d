@@ -25,7 +25,6 @@ export async function populateFirestoreFromApi() {
         const batch = writeBatch(firestore);
         const resultsCollection = collection(firestore, 'lotteryResults');
         const today = new Date();
-        const promises = [];
         let successfulImports = 0;
 
         // Fetch for the last 90 days
@@ -51,67 +50,65 @@ export async function populateFirestoreFromApi() {
                 ('0' + date.getDate()).slice(-2),
             ].join('-');
 
-            const promise = fetch(`https://api.thaistock2d.com/2d_result?date=${formattedApiDate}`, { cache: 'no-store' })
-                .then(response => {
-                    if (!response.ok) {
-                        console.warn(`API request failed for date ${formattedApiDate} with status ${response.status}`);
-                        return null;
-                    }
-                    return response.text();
-                })
-                .then(text => {
-                    if (!text) return null;
+            try {
+                const response = await fetch(`https://api.thaistock2d.com/2d_result?date=${formattedApiDate}`, { cache: 'no-store' });
+                if (!response.ok) {
+                    console.warn(`API request failed for date ${formattedApiDate} with status ${response.status}`);
+                    continue;
+                }
 
-                    let day;
-                    try {
-                        day = JSON.parse(text);
-                    } catch (e) {
-                        console.warn(`Failed to parse JSON for date ${formattedApiDate}. Response:`, text);
-                        return null;
-                    }
-                    
-                    if (!day || !day.date) {
-                        return null;
-                    }
+                const text = await response.text();
 
-                    const docRef = doc(resultsCollection, formattedDocId);
+                // Skip if the response is empty, whitespace, or just an empty JSON array "[]"
+                if (!text || text.trim() === '' || text.trim() === '[]') {
+                    continue;
+                }
 
-                    const dailyData: DailyResult = {
-                        date: formattedDocId,
-                        s11_00: null,
-                        s12_01: null,
-                        s15_00: null,
-                        s16_30: null,
+                const day = JSON.parse(text);
+                
+                if (!day || !day.date) {
+                    continue;
+                }
+
+                const docRef = doc(resultsCollection, formattedDocId);
+                const dailyData: DailyResult = {
+                    date: formattedDocId,
+                    s11_00: null,
+                    s12_01: null,
+                    s15_00: null,
+                    s16_30: null,
+                };
+                
+                let hasData = false;
+
+                if (day['12:01']) {
+                    hasData = true;
+                    dailyData.s12_01 = {
+                        set: day['12:01'].set,
+                        value: day['12:01'].value,
+                        twoD: get2DNumber(day['12:01'].set, day['12:01'].value)
                     };
-                    
-                    if (day['12:01']) {
-                        dailyData.s12_01 = {
-                            set: day['12:01'].set,
-                            value: day['12:01'].value,
-                            twoD: get2DNumber(day['12:01'].set, day['12:01'].value)
-                        };
-                        dailyData.s15_00 = dailyData.s12_01;
-                    }
-                    
-                    if (day['4:30']) {
-                        dailyData.s16_30 = {
-                            set: day['4:30'].set,
-                            value: day['4:30'].value,
-                            twoD: get2DNumber(day['4:30'].set, day['4:30'].value)
-                        };
-                    }
+                    dailyData.s15_00 = dailyData.s12_01; // Copy to 3:00 PM
+                }
+                
+                if (day['16:30']) {
+                    hasData = true;
+                    dailyData.s16_30 = {
+                        set: day['16:30'].set,
+                        value: day['16:30'].value,
+                        twoD: get2DNumber(day['16:30'].set, day['16:30'].value)
+                    };
+                }
 
+                if (hasData) {
                     batch.set(docRef, dailyData, { merge: true });
                     successfulImports++;
-                })
-                .catch(error => {
-                    console.error(`An unexpected error occurred during fetch for date ${formattedApiDate}:`, error);
-                });
-            
-            promises.push(promise);
+                }
+            } catch (error) {
+                 console.error(`An unexpected error occurred during fetch for date ${formattedApiDate}:`, error);
+                 // Continue to the next date
+            }
         }
-
-        await Promise.all(promises);
 
         if (successfulImports > 0) {
             await batch.commit();
@@ -134,12 +131,15 @@ export async function getLiveSetData() {
     }
     
     const responseText = await response.text();
+    if (!responseText || responseText.trim() === '') {
+        return { success: false, error: "Live data API returned an empty response." };
+    }
+    
     let result;
     try {
         result = JSON.parse(responseText);
     } catch (error) {
         console.error('Error parsing live data JSON:', error);
-        // Return a structured error, but don't throw, to avoid crashing if the API is temporarily down.
         return { success: false, error: "Live data API returned invalid JSON." };
     }
     
