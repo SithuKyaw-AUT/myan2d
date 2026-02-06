@@ -3,7 +3,6 @@
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -20,6 +19,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, limit, orderBy } from 'firebase/firestore';
 import { useMemoFirebase } from '@/hooks/use-memo-firebase';
 import { Skeleton } from '../ui/skeleton';
+import { format } from 'date-fns';
 
 function ResultCell({ twoD }: { twoD?: string | null }) {
   if (!twoD) {
@@ -46,19 +46,19 @@ export default function HistoricalTable() {
     if (isLoading) {
       return Array.from({ length: 5 }).map((_, i) => (
         <TableRow key={i}>
-          <TableCell>
-            <Skeleton className="h-5 w-16" />
+          <TableCell className="p-2">
+            <Skeleton className="h-5 w-32" />
           </TableCell>
-          <TableCell>
+          <TableCell className="p-2">
             <Skeleton className="mx-auto h-6 w-8" />
           </TableCell>
-          <TableCell>
+          <TableCell className="p-2">
             <Skeleton className="mx-auto h-6 w-8" />
           </TableCell>
-          <TableCell>
+          <TableCell className="p-2">
             <Skeleton className="mx-auto h-6 w-8" />
           </TableCell>
-          <TableCell>
+          <TableCell className="p-2">
             <Skeleton className="mx-auto h-6 w-8" />
           </TableCell>
         </TableRow>
@@ -78,45 +78,53 @@ export default function HistoricalTable() {
       );
     }
 
-    return (results as DailyResult[]).map((result) => (
-      <TableRow key={result.id}>
-        <TableCell className="font-medium text-muted-foreground">
-          {(result.date as string).substring(5)}
-        </TableCell>
-        <TableCell>
-          <ResultCell twoD={result.s11_00?.twoD} />
-        </TableCell>
-        <TableCell>
-          <ResultCell twoD={result.s12_01?.twoD} />
-        </TableCell>
-        <TableCell>
-          <ResultCell twoD={result.s15_00?.twoD} />
-        </TableCell>
-        <TableCell>
-          <ResultCell twoD={result.s16_30?.twoD} />
-        </TableCell>
-      </TableRow>
-    ));
+    return (results as DailyResult[]).map((result) => {
+      // Safely parse date to avoid timezone issues.
+      const dateParts = (result.date as string).split('-');
+      const date = new Date(
+        parseInt(dateParts[0]),
+        parseInt(dateParts[1]) - 1,
+        parseInt(dateParts[2])
+      );
+      const formattedDate = format(date, 'dd/MM/yyyy (EEEE)');
+
+      return (
+        <TableRow key={result.id}>
+          <TableCell className="p-2 font-medium text-muted-foreground whitespace-nowrap">
+            {formattedDate}
+          </TableCell>
+          <TableCell className="p-2">
+            <ResultCell twoD={result.s11_00?.twoD} />
+          </TableCell>
+          <TableCell className="p-2">
+            <ResultCell twoD={result.s12_01?.twoD} />
+          </TableCell>
+          <TableCell className="p-2">
+            <ResultCell twoD={result.s15_00?.twoD} />
+          </TableCell>
+          <TableCell className="p-2">
+            <ResultCell twoD={result.s16_30?.twoD} />
+          </TableCell>
+        </TableRow>
+      );
+    });
   };
 
   return (
     <Card className="h-full">
       <CardHeader>
         <CardTitle className="font-headline text-2xl">Daily Results</CardTitle>
-        <CardDescription>
-          Recent winning numbers from Firestore.
-        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="relative h-[18rem] overflow-auto">
+        <div className="relative h-48 overflow-auto">
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-card">
               <TableRow>
-                <TableHead className="w-[80px]">Date</TableHead>
-                <TableHead className="text-center">11:00 AM</TableHead>
-                <TableHead className="text-center">12:01 PM</TableHead>
-                <TableHead className="text-center">3:00 PM</TableHead>
-                <TableHead className="text-center">4:30 PM</TableHead>
+                <TableHead className="px-2">Date</TableHead>
+                <TableHead className="text-center px-2">11:00 AM</TableHead>
+                <TableHead className="text-center px-2">12:01 PM</TableHead>
+                <TableHead className="text-center px-2">3:00 PM</TableHead>
+                <TableHead className="text-center px-2">4:30 PM</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>{renderContent()}</TableBody>
