@@ -29,8 +29,11 @@ type LiveData = {
 const RESULT_TIMES: Record<string, string> = {
     '11:00': 's11_00',
     '12:01': 's12_01',
-    '15:00': 's15_00',
     '16:30': 's16_30',
+};
+
+const COPY_TIMES: Record<string, string> = {
+    '12:01': 's15_00',
 };
 
 const FAST_POLL_INTERVAL = 10 * 1000; // 10 seconds
@@ -96,11 +99,20 @@ export default function LiveNumber() {
       [fieldToUpdate]: resultData
     };
 
+    if (COPY_TIMES[timeKey]) {
+        const copyField = COPY_TIMES[timeKey as keyof typeof COPY_TIMES];
+        dataToWrite[copyField] = resultData;
+    }
+
     setDoc(docRef, dataToWrite, { merge: true })
       .then(() => {
+        let description = `Today's ${timeKey} result (${result.twoD}) has been saved.`;
+         if (COPY_TIMES[timeKey]) {
+          description = `Results for 12:01 and 15:00 (${result.twoD}) have been saved.`;
+        }
         toast({
           title: 'Result Saved!',
-          description: `Today's ${timeKey} result (${result.twoD}) has been saved.`,
+          description: description,
         });
         errorEmitter.emit('new-result-saved');
       })
