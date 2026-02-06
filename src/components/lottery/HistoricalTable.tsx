@@ -29,21 +29,21 @@ function ResultCell({ twoD }: { twoD?: string | null }) {
 }
 
 export default function HistoricalTable() {
-  const { firestore } = useFirestore();
+  const  firestore  = useFirestore();
 
   const resultsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(
-      collection(firestore, 'lotteryResults'),
+      collection(firestore, 'lottery_results'),
       orderBy('date', 'desc'),
       limit(7)
     );
   }, [firestore]);
 
-  const { data: results, loading } = useCollection(resultsQuery);
+  const { data: results, isLoading } = useCollection(resultsQuery);
 
   const renderContent = () => {
-    if (loading) {
+    if (isLoading) {
       return Array.from({ length: 7 }).map((_, i) => (
         <TableRow key={i}>
           <TableCell>

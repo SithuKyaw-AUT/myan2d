@@ -12,7 +12,7 @@ import { historicalData } from '@/lib/historical-data';
 export default function FirestoreManager() {
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
-  const { firestore } = useFirestore();
+  const  firestore  = useFirestore();
 
   const handlePopulate = async () => {
     setIsImporting(true);
@@ -28,7 +28,7 @@ export default function FirestoreManager() {
 
     try {
       const batch = writeBatch(firestore);
-      const resultsCollection = collection(firestore, 'lotteryResults');
+      const resultsCollection = collection(firestore, 'lottery_results');
 
       historicalData.forEach((day) => {
         const docRef = doc(resultsCollection, day.date);
@@ -42,7 +42,6 @@ export default function FirestoreManager() {
 
       const commitPromise = batch.commit();
 
-      // Add a 30-second timeout
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => {
           reject(new Error('The import process timed out after 30 seconds. This may be due to an invalid Firebase configuration or network issues. Please check your firebase/config.ts file and your connection.'));

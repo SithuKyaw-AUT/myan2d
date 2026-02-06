@@ -41,14 +41,14 @@ export default function LiveNumber() {
   const [liveData, setLiveData] = useState<LiveData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
-  const { firestore } = useFirestore();
+  const  firestore  = useFirestore();
 
   const handleWriteToFirestore = (timeKey: string, result: LiveData) => {
     if (!firestore) return;
 
     const today = new Date();
     const docId = formatDateToYyyyMmDd(today);
-    const docRef = doc(firestore, 'lotteryResults', docId);
+    const docRef = doc(firestore, 'lottery_results', docId);
 
     const resultData: Result = {
       set: result.setIndex,
