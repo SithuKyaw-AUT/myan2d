@@ -34,4 +34,4 @@ jobs:
       - name: Run data import script
         env:
           FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
-        run: npx ts-node ./scripts/import-historical-data.ts
+        run: npx ts-node --project tsconfig.node.json ./scripts/import-historical-data.ts

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "import:data": "npx ts-node --require dotenv/config scripts/import-historical-data.ts"
+    "import:data": "npx ts-node --require dotenv/config --project tsconfig.node.json scripts/import-historical-data.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
