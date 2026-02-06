@@ -3,7 +3,7 @@
 import { analyzeSetPatterns } from '@/ai/flows/analyze-patterns';
 import { getFirestore, collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import type { DailyResult } from './types';
+import type { DailyResult, Result } from './types';
 
 
 function get2DNumber(setIndex: string, setValue: string): string {
@@ -19,115 +19,55 @@ function get2DNumber(setIndex: string, setValue: string): string {
     return `${firstDigit}${secondDigit}`;
 }
 
-export async function populateFirestoreFromApi() {
+export async function populateFirestoreFromData(jsonData: string) {
     try {
         const { firestore } = initializeFirebase();
         const batch = writeBatch(firestore);
         const resultsCollection = collection(firestore, 'lotteryResults');
-        const today = new Date();
+
+        const data: { date: string; child: { time: string; set: string; value: string; twod: string }[] }[] = JSON.parse(jsonData);
+
         let successfulImports = 0;
 
-        // Fetch for the last 90 days
-        for (let i = 0; i < 90; i++) {
-            const date = new Date();
-            date.setDate(today.getDate() - i);
+        for (const day of data) {
+            const docId = day.date;
+            const docRef = doc(resultsCollection, docId);
 
-            // Skip weekends (Saturday=6, Sunday=0)
-            const dayOfWeek = date.getDay();
-            if (dayOfWeek === 0 || dayOfWeek === 6) {
-                continue;
+            const dailyData: DailyResult = {
+                date: docId,
+                s11_00: null,
+                s12_01: null,
+                s15_00: null,
+                s16_30: null,
+            };
+
+            let hasData = false;
+            for (const result of day.child) {
+                const resultObj: Result = {
+                    set: result.set,
+                    value: result.value,
+                    twoD: result.twod,
+                };
+                hasData = true;
+                switch (result.time) {
+                    case '11:00:00':
+                        dailyData.s11_00 = resultObj;
+                        break;
+                    case '12:01:00':
+                        dailyData.s12_01 = resultObj;
+                        break;
+                    case '15:00:00':
+                        dailyData.s15_00 = resultObj;
+                        break;
+                    case '16:30:00':
+                        dailyData.s16_30 = resultObj;
+                        break;
+                }
             }
 
-            const formattedApiDate = [
-                ('0' + date.getDate()).slice(-2),
-                ('0' + (date.getMonth() + 1)).slice(-2),
-                date.getFullYear(),
-            ].join('-');
-
-            const formattedDocId = [
-                date.getFullYear(),
-                ('0' + (date.getMonth() + 1)).slice(-2),
-                ('0' + date.getDate()).slice(-2),
-            ].join('-');
-
-            try {
-                // Adding a delay to be polite to the API server and avoid rate-limiting
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                const response = await fetch(`https://api.thaistock2d.com/2d_result?date=${formattedApiDate}`, { cache: 'no-store' });
-                if (!response.ok) {
-                    console.warn(`API request failed for date ${formattedApiDate} with status ${response.status}`);
-                    continue;
-                }
-
-                const text = await response.text();
-
-                if (!text || text.trim() === '' || text.trim() === '[]') {
-                    continue;
-                }
-                
-                let parsedData;
-                try {
-                    parsedData = JSON.parse(text);
-                } catch (e) {
-                    console.warn(`JSON parsing failed for date ${formattedApiDate}:`, text);
-                    continue; 
-                }
-
-                // The API can return an object or an array with a single object.
-                const day = Array.isArray(parsedData) ? parsedData[0] : parsedData;
-                
-                if (!day || typeof day !== 'object' || !day.date) {
-                    continue;
-                }
-
-
-                const docRef = doc(resultsCollection, formattedDocId);
-                const dailyData: DailyResult = {
-                    date: formattedDocId,
-                    s11_00: null,
-                    s12_01: null,
-                    s15_00: null,
-                    s16_30: null,
-                };
-                
-                let hasData = false;
-                
-                if (day['11:00'] && day['11:00'].set && day['11:00'].value) {
-                    hasData = true;
-                    dailyData.s11_00 = {
-                        set: day['11:00'].set,
-                        value: day['11:00'].value,
-                        twoD: get2DNumber(day['11:00'].set, day['11:00'].value)
-                    };
-                }
-
-                if (day['12:01'] && day['12:01'].set && day['12:01'].value) {
-                    hasData = true;
-                    dailyData.s12_01 = {
-                        set: day['12:01'].set,
-                        value: day['12:01'].value,
-                        twoD: get2DNumber(day['12:01'].set, day['12:01'].value)
-                    };
-                    dailyData.s15_00 = dailyData.s12_01; // Copy to 3:00 PM
-                }
-                
-                if (day['16:30'] && day['16:30'].set && day['16:30'].value) {
-                    hasData = true;
-                    dailyData.s16_30 = {
-                        set: day['16:30'].set,
-                        value: day['16:30'].value,
-                        twoD: get2DNumber(day['16:30'].set, day['16:30'].value)
-                    };
-                }
-
-                if (hasData) {
-                    batch.set(docRef, dailyData, { merge: true });
-                    successfulImports++;
-                }
-            } catch (error) {
-                 console.error(`An unexpected error occurred during fetch for date ${formattedApiDate}:`, error);
-                 // Continue to the next date
+            if (hasData) {
+                batch.set(docRef, dailyData);
+                successfulImports++;
             }
         }
 
@@ -138,7 +78,7 @@ export async function populateFirestoreFromApi() {
         return { success: true, message: `Successfully imported ${successfulImports} days of data.` };
 
     } catch (error: any) {
-        console.error('Failed to populate Firestore:', error);
+        console.error('Failed to populate Firestore from data:', error);
         return { success: false, error: error.message || 'An unexpected error occurred during import.' };
     }
 }
