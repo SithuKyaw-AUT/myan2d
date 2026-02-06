@@ -58,7 +58,6 @@ export default function AiAnalysis() {
   const [analysisResult, setAnalysisResult] = useState<AnalyzePatternsOutput | null>(
     null
   );
-  const [isFromCache, setIsFromCache] = useState(false);
   const [language, setLanguage] = useState<'en' | 'my'>('en');
   const firestore = useFirestore();
 
@@ -129,13 +128,6 @@ export default function AiAnalysis() {
 
       if (result.success && result.result) {
         setAnalysisResult(result.result as AnalyzePatternsOutput);
-        if (result.fromCache) {
-          setIsFromCache(true);
-          toast({
-            title: 'Loaded from Cache',
-            description: 'Analysis results are up-to-date.',
-          });
-        }
       } else {
         toast({
           variant: 'destructive',
@@ -196,9 +188,6 @@ export default function AiAnalysis() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {analysisResult && isFromCache && (
-                <Badge variant="secondary" className="whitespace-nowrap">Loaded from Cache</Badge>
-            )}
              {analysisResult && (
                  <Button variant="outline" size="sm" onClick={() => setLanguage(lang => lang === 'en' ? 'my' : 'en')}>
                     {language === 'en' ? '🇲🇲' : '🇬🇧'}

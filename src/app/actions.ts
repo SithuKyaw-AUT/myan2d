@@ -1,36 +1,6 @@
 'use server';
 
-import { promises as fs } from 'fs';
-import path from 'path';
-import { createHash } from 'crypto';
 import type { AnalyzePatternsInput, AnalyzePatternsOutput } from './analysis-types';
-
-
-const CACHE_PATH = path.join(process.cwd(), 'src', 'lib', 'analysis-cache.json');
-
-type AnalysisCache = {
-    dataHash: string;
-    analysisResult: any;
-};
-
-async function getAnalysisCache(): Promise<AnalysisCache | null> {
-    try {
-        await fs.access(CACHE_PATH);
-        const fileContent = await fs.readFile(CACHE_PATH, 'utf-8');
-        if (fileContent.trim() === '') return null;
-        return JSON.parse(fileContent);
-    } catch (error) {
-        return null;
-    }
-}
-
-async function setAnalysisCache(data: AnalysisCache) {
-    try {
-        await fs.writeFile(CACHE_PATH, JSON.stringify(data, null, 2), 'utf-8');
-    } catch (error) {
-        console.error('Failed to write analysis cache:', error);
-    }
-}
 
 function get2DNumber(setIndex: string, setValue: string): string {
     const cleanSetIndex = setIndex.replace(/,/g, '');
@@ -217,24 +187,7 @@ export async function handleAnalysis(input: AnalyzePatternsInput) {
             return { success: false, error: "Not enough data for analysis." };
         }
         
-        const dataString = JSON.stringify(input);
-        const currentDataHash = createHash('sha256').update(dataString).digest('hex');
-
-        const cache = await getAnalysisCache();
-        if (cache && cache.dataHash === currentDataHash && cache.analysisResult) {
-            return {
-                success: true,
-                result: cache.analysisResult,
-                fromCache: true,
-            };
-        }
-        
         const analysisResult = performLocalAnalysis(input);
-        
-        await setAnalysisCache({
-            dataHash: currentDataHash,
-            analysisResult: analysisResult,
-        });
 
         return {
             success: true,
