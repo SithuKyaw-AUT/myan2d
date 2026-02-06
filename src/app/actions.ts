@@ -198,7 +198,7 @@ function performLocalAnalysis(input: AnalyzePatternsInput): AnalyzePatternsOutpu
         watchRotation: topCandidates.slice(6, 10).map(c => c.number),
     };
     
-    const executiveSummary = `Current analysis generated ${finalCandidateNumbers.length} candidate numbers through rule-based filtering. After statistical evaluation and confidence scoring, ${topCandidates.length} numbers remain in the high-interest zone. Power digit influence appears ${categoryHitRates.powerDigitHitRate > 30 ? 'dominant' : 'moderate'} in recent sessions, while Brother and Double patterns show ${categoryHitRates.brotherPairHitRate + categoryHitRates.doubleNumberHitRate < 10 ? 'weak' : 'some'} consistency. Focus on numbers with multiple rule overlaps and stable historical frequency.`;
+    const analysisSummary = `Current analysis generated ${finalCandidateNumbers.length} candidate numbers through rule-based filtering. After statistical evaluation and confidence scoring, ${topCandidates.length} numbers remain in the high-interest zone. Power digit influence appears ${categoryHitRates.powerDigitHitRate > 30 ? 'dominant' : 'moderate'} in recent sessions, while Brother and Double patterns show ${categoryHitRates.brotherPairHitRate + categoryHitRates.doubleNumberHitRate < 10 ? 'weak' : 'some'} consistency. Focus on numbers with multiple rule overlaps and stable historical frequency.`;
 
     const marketContext = {
         previousResult: previousResult,
@@ -208,7 +208,7 @@ function performLocalAnalysis(input: AnalyzePatternsInput): AnalyzePatternsOutpu
 
     return {
         marketContext,
-        executiveSummary,
+        analysisSummary,
         categoryHitRates,
         topCandidates,
         finalSelection

@@ -167,7 +167,7 @@ export default function AiAnalysis() {
     }
 
     const t = translations[language];
-    const { marketContext, executiveSummary, categoryHitRates, topCandidates, finalSelection } = analysisResult;
+    const { marketContext, analysisSummary, categoryHitRates, topCandidates, finalSelection } = analysisResult;
 
     let content = `mm2D LIVE — Analysis Report\n`;
     content += `=================================\n`;
@@ -175,8 +175,8 @@ export default function AiAnalysis() {
     content += `Data Window: Last 90 Sessions\n`;
     content += `Method: Rule Filtering + Statistical Validation\n\n`;
 
-    content += `--- ${t.executiveSummary} ---\n`;
-    content += `${executiveSummary}\n\n`;
+    content += `--- ${t.analysisSummary} ---\n`;
+    content += `${analysisSummary}\n\n`;
     
     content += `--- ${t.marketContext} ---\n`;
     content += `Previous Result: ${marketContext.previousResult}\n`;
@@ -306,7 +306,7 @@ const translations = {
         refreshAnalysis: "Refresh Analysis",
         analyzing: "Analyzing...",
         updatingAnalysis: "Updating Analysis...",
-        executiveSummary: "Executive Summary",
+        analysisSummary: "Analysis Summary",
         marketContext: "Market Context",
         previousResult: "Previous Result",
         setOpenIndex: "SET Open Index",
@@ -338,7 +338,7 @@ const translations = {
         refreshAnalysis: "သုံးသပ်ချက် အသစ်လုပ်ပါ",
         analyzing: "သုံးသပ်နေသည်...",
         updatingAnalysis: "သုံးသပ်ချက် အသစ်လုပ်နေသည်...",
-        executiveSummary: "အမှုဆောင် အနှစ်ချုပ်",
+        analysisSummary: "သုံးသပ်ချက် အနှစ်ချုပ်",
         marketContext: "ဈေးကွက် အခြေအနေ",
         previousResult: "ယခင် ထွက်ဂဏန်း",
         setOpenIndex: "SET အဖွင့်",
@@ -367,7 +367,7 @@ const translations = {
 
 const AnalysisDashboard = ({ data, language }: { data: AnalyzePatternsOutput, language: 'en' | 'my' }) => {
   const t = translations[language];
-  const { marketContext, executiveSummary, categoryHitRates, topCandidates, finalSelection } = data;
+  const { marketContext, analysisSummary, categoryHitRates, topCandidates, finalSelection } = data;
 
   const chartData = [
       { name: t.power, "Accuracy": categoryHitRates.powerDigitHitRate, fill: "hsl(var(--chart-1))" },
@@ -405,10 +405,10 @@ const AnalysisDashboard = ({ data, language }: { data: AnalyzePatternsOutput, la
             <Card>
                 <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
                     <FileText className="h-6 w-6 text-accent" />
-                    <CardTitle className="text-lg">{t.executiveSummary}</CardTitle>
+                    <CardTitle className="text-lg">{t.analysisSummary}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-muted-foreground">{executiveSummary}</p>
+                    <p className="text-sm text-muted-foreground">{analysisSummary}</p>
                 </CardContent>
             </Card>
 

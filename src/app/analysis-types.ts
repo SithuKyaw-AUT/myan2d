@@ -45,7 +45,7 @@ const FinalSelectionSchema = z.object({
 
 export const AnalyzePatternsOutputSchema = z.object({
   marketContext: MarketContextSchema,
-  executiveSummary: z.string(),
+  analysisSummary: z.string(),
   categoryHitRates: CategoryHitRateSchema,
   topCandidates: z.array(CandidateStatsSchema),
   finalSelection: FinalSelectionSchema,
