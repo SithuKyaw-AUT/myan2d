@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useCallback, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -33,6 +33,41 @@ const RESULT_TIMES: Record<string, string> = {
     '16:30': 's16_30',
 };
 
+const FAST_POLL_INTERVAL = 10 * 1000; // 10 seconds
+const NORMAL_POLL_INTERVAL = 60 * 1000; // 1 minute
+
+function getPollingInterval(): number | null {
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Yangon' }));
+    const day = now.getDay(); // Sunday = 0, Saturday = 6
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+
+    // No polling on weekends
+    if (day === 0 || day === 6) {
+        return null;
+    }
+
+    // No polling outside of general market hours (e.g., 8 AM to 6 PM MMT)
+    if (hour < 8 || hour > 18) {
+        return null;
+    }
+
+    // Fast polling window: 5 minutes before and 2 minutes after each result time
+    const isNearResultTime = Object.keys(RESULT_TIMES).some(timeStr => {
+        const [resHour, resMinute] = timeStr.split(':').map(Number);
+        const timeInMinutes = hour * 60 + minute;
+        const resultTimeInMinutes = resHour * 60 + resMinute;
+        return timeInMinutes >= resultTimeInMinutes - 5 && timeInMinutes <= resultTimeInMinutes + 2;
+    });
+
+    if (isNearResultTime) {
+        return FAST_POLL_INTERVAL;
+    }
+
+    return NORMAL_POLL_INTERVAL;
+}
+
+
 export default function LiveNumber() {
   const [, startTransition] = useTransition();
   const { toast } = useToast();
@@ -40,8 +75,9 @@ export default function LiveNumber() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
   const  firestore  = useFirestore();
+  const previousTwoDRef = useRef<string | undefined>();
 
-  const handleWriteToFirestore = (timeKey: string, result: LiveData) => {
+  const handleWriteToFirestore = useCallback((timeKey: string, result: LiveData) => {
     if (!firestore) return;
 
     const today = new Date();
@@ -76,46 +112,10 @@ export default function LiveNumber() {
         });
         errorEmitter.emit('permission-error', permissionError);
       });
-  };
+  }, [firestore, toast]);
 
   useEffect(() => {
-    const fetchData = () => {
-      startTransition(async () => {
-        const result = await getLiveSetData();
-        if (result.success && result.data) {
-          const previousTwoD = liveData?.twoD;
-          setLiveData(result.data);
-          
-          const mmtTime = new Date().toLocaleTimeString('en-US', {
-              timeZone: 'Asia/Yangon',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false, // 24-hour format
-          });
-          
-          // Check if it's a result time AND the number has changed
-          if (result.data.twoD !== previousTwoD) {
-            for (const timeKey in RESULT_TIMES) {
-                if (mmtTime.startsWith(timeKey)) {
-                    handleWriteToFirestore(timeKey, result.data);
-                    break;
-                }
-            }
-          }
-
-        } else if (result.error && !liveData) {
-            toast({
-              variant: 'destructive',
-              title: 'Live Data Failed',
-              description: result.error,
-            });
-        }
-        if (isLoading) {
-            setIsLoading(false);
-        }
-      });
-    };
-
+    // Current time ticker
     const timer = setInterval(() => {
         const time = new Date().toLocaleTimeString('en-US', {
             timeZone: 'Asia/Yangon',
@@ -127,15 +127,69 @@ export default function LiveNumber() {
         setCurrentTime(`${time} MMT`);
     }, 1000);
 
-    fetchData(); // Initial fetch
-    const interval = setInterval(fetchData, 10 * 1000); // Refresh every 10 seconds
+    const fetchData = () => {
+      startTransition(async () => {
+        const result = await getLiveSetData();
+        if (result.success && result.data) {
+          const previousTwoD = previousTwoDRef.current;
+          setLiveData(result.data);
+          previousTwoDRef.current = result.data.twoD;
+          
+          const mmtTime = new Date().toLocaleTimeString('en-US', {
+              timeZone: 'Asia/Yangon',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+          });
+          
+          if (result.data.twoD !== previousTwoD) {
+            for (const timeKey in RESULT_TIMES) {
+                const [resHour, resMinute] = timeKey.split(':').map(Number);
+                const [currHour, currMinute] = mmtTime.split(':').map(Number);
+                if (currHour === resHour && currMinute >= resMinute && currMinute <= resMinute + 1) {
+                    handleWriteToFirestore(timeKey, result.data);
+                    break;
+                }
+            }
+          }
+
+        } else if (result.error) {
+            if (!previousTwoDRef.current) {
+                toast({
+                  variant: 'destructive',
+                  title: 'Live Data Failed',
+                  description: result.error,
+                });
+            }
+        }
+        if (isLoading) {
+            setIsLoading(false);
+        }
+      });
+    };
+
+    // Smart polling for data
+    let timeoutId: NodeJS.Timeout;
+    const smartFetch = () => {
+        fetchData();
+        
+        const interval = getPollingInterval();
+        if (interval !== null) {
+            timeoutId = setTimeout(smartFetch, interval);
+        } else {
+             if (isLoading) setIsLoading(false);
+             if (!previousTwoDRef.current) setLiveData(null);
+        }
+    };
+
+    smartFetch();
     
     return () => {
         clearInterval(timer);
-        clearInterval(interval);
+        clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleWriteToFirestore]);
 
   return (
     <Card className="w-full overflow-hidden text-center h-full">
@@ -144,7 +198,7 @@ export default function LiveNumber() {
           Live 2D Number
         </CardTitle>
         <CardDescription>
-            {currentTime ? `Live from SET | ${currentTime}` : 'Connecting...'}
+            {isLoading ? 'Connecting...' : (currentTime ? `Live from SET | ${currentTime}` : 'Market Closed')}
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
@@ -168,7 +222,7 @@ export default function LiveNumber() {
             <div className="absolute -bottom-2 -right-2 h-16 w-16 animate-pulse rounded-full bg-primary/20 -z-10 delay-500"></div>
           </div>
         ) : (
-            <p className="text-destructive">Could not load live data.</p>
+            <p className="text-muted-foreground">Market is currently closed.</p>
         )}
       </CardContent>
     </Card>
