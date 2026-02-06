@@ -30,17 +30,10 @@ import { BrainCircuit, Loader2, Percent, WandSparkles } from 'lucide-react';
 import { getLiveSetData, handleAnalysis } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '../ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { useFirestore } from '@/firebase';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { DailyResult } from '@/app/types';
 import { errorEmitter } from '@/firebase/error-emitter';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '../ui/accordion';
 import {
   Table,
   TableBody,
@@ -124,6 +117,7 @@ export default function AiAnalysis() {
           evaluationNumbers,
       };
 
+      // No Caching: Always fetch fresh analysis
       const result = await handleAnalysis(analysisInput);
 
       if (result.success && result.result) {
@@ -223,56 +217,37 @@ const LoadingDashboard = () => (
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-4 w-1/3" />
     </div>
-    <Skeleton className="h-40 rounded-lg" />
-    <Skeleton className="h-56 rounded-lg" />
     <Skeleton className="h-24 rounded-lg" />
+    <Skeleton className="h-56 rounded-lg" />
   </div>
-);
-
-const NumberBadge = ({ number }: { number: string }) => (
-    <Badge variant="outline" className="text-base font-mono tracking-widest">{number}</Badge>
 );
 
 const translations = {
     en: {
-        finalPrediction: 'Final Prediction',
-        predictionSubtitle: 'Synthesized from rule-based filtering and statistical analysis.',
-        stage1Title: 'Stage 1: Rule-Based Filtering',
-        candidateGroups: 'Candidate Number Groups',
-        powerDigits: 'Power Digits',
-        brotherPairs: 'Brother (Mirror) Pairs',
-        oneChange: 'One-Change Numbers',
-        doubles: 'Double Numbers',
-        finalCandidates: 'Final Candidates',
-        finalCandidatesSubtitle: 'The final list of candidates after applying the Nat Khat (exclusion) rule.',
-        stage2Title: 'Stage 2: Statistical Evaluation',
-        categoryHitRates: 'Category Hit Rates',
-        individualHitRates: 'Individual Candidate Hit Rates',
+        executiveSummary: "Executive Summary",
+        executiveSummarySubtitle: "Synthesized from rule-based filtering and statistical analysis.",
+        analysisBreakdown: "Analysis Breakdown",
+        analysisBreakdownSubtitle: "Historical performance of rules and top candidates.",
+        categoryPerformance: "Rule Category Performance",
+        top10Candidates: "Top 10 Likely Numbers",
         number: 'Number',
-        hitCount: 'Hit Count',
-        hitRate: 'Hit Rate (%)',
+        hitCount: 'Hit Count (90d)',
+        likelihood: 'Likelihood (%)',
         power: 'Power',
         brother: 'Brother',
         oneChangeLabel: '1-Change',
         doublesLabel: 'Doubles',
     },
     my: {
-        finalPrediction: 'နောက်ဆုံး ခန့်မှန်းချက်',
-        predictionSubtitle: 'စည်းမျဉ်း-အခြေပြု စစ်ထုတ်ခြင်းနှင့် စာရင်းအင်းအကဲဖြတ်ခြင်းမှ ပေါင်းစပ်ထားသည်။',
-        stage1Title: 'အဆင့် ၁: စည်းမျဉ်း-အခြေပြု စစ်ထုတ်ခြင်း',
-        candidateGroups: 'ဖြစ်နိုင်သောဂဏန်းအုပ်စုများ',
-        powerDigits: 'ပါဝါဂဏန်းများ',
-        brotherPairs: 'ညီအကို (မှန်) ဂဏန်းများ',
-        oneChange: 'တစ်လုံးပြောင်း ဂဏန်းများ',
-        doubles: 'အပူးဂဏန်းများ',
-        finalCandidates: 'နောက်ဆုံး ရွေးချယ်ထားသော ဂဏန်းများ',
-        finalCandidatesSubtitle: 'နက္ခတ်(ဖယ်ထုတ်ခြင်း)စည်းမျဉ်းကို အသုံးပြုပြီးနောက် နောက်ဆုံးရွေးချယ်ထားသော ဂဏန်းများစာရင်း။',
-        stage2Title: 'အဆင့် ၂: စာရင်းအင်းအကဲဖြတ်ခြင်း',
-        categoryHitRates: 'အုပ်စုလိုက် ထိနှုန်းများ',
-        individualHitRates: 'တစ်ဦးချင်းစီ၏ ထိနှုန်းများ',
+        executiveSummary: "အမှုဆောင် အနှစ်ချုပ်",
+        executiveSummarySubtitle: "စည်းမျဉ်း-အခြေပြု စစ်ထုတ်ခြင်းနှင့် စာရင်းအင်းအကဲဖြတ်ခြင်းမှ ပေါင်းစပ်ထားသည်။",
+        analysisBreakdown: "သုံးသပ်ချက် အသေးစိတ်",
+        analysisBreakdownSubtitle: "စည်းမျဉ်းများနှင့် ထိပ်တန်းဂဏန်းများ၏ ယခင်စွမ်းဆောင်ရည်။",
+        categoryPerformance: "စည်းမျဉ်းအုပ်စု စွမ်းဆောင်ရည်",
+        top10Candidates: "အလားအလာအရှိဆုံး ဂဏန်း ၁၀ ကွက်",
         number: 'ဂဏန်း',
-        hitCount: 'ထိအရေအတွက်',
-        hitRate: 'ထိနှုန်း (%)',
+        hitCount: 'ထိမှန်မှု (ရက် ၉၀)',
+        likelihood: 'ဖြစ်နိုင်ခြေ (%)',
         power: 'ပါဝါ',
         brother: 'ညီအကို',
         oneChangeLabel: 'တစ်လုံးပြောင်း',
@@ -281,19 +256,21 @@ const translations = {
 };
 
 const AnalysisDashboard = ({ data, language }: { data: AnalyzePatternsOutput, language: 'en' | 'my' }) => {
-  const { stage1_filtering, stage2_evaluation, prediction } = data;
+  const { stage2_evaluation, prediction } = data;
   const t = translations[language];
   
+  const top10Candidates = stage2_evaluation.individualHitRates.slice(0, 10);
+  
   const chartData = [
-      { name: t.power, "Hit Rate": stage2_evaluation.categoryHitRates.powerDigitHitRate, fill: "hsl(var(--chart-1))" },
-      { name: t.brother, "Hit Rate": stage2_evaluation.categoryHitRates.brotherPairHitRate, fill: "hsl(var(--chart-2))" },
-      { name: t.oneChangeLabel, "Hit Rate": stage2_evaluation.categoryHitRates.oneChangeHitRate, fill: "hsl(var(--chart-3))" },
-      { name: t.doublesLabel, "Hit Rate": stage2_evaluation.categoryHitRates.doubleNumberHitRate, fill: "hsl(var(--chart-4))" },
+      { name: t.power, "Likelihood": stage2_evaluation.categoryHitRates.powerDigitHitRate, fill: "hsl(var(--chart-1))" },
+      { name: t.brother, "Likelihood": stage2_evaluation.categoryHitRates.brotherPairHitRate, fill: "hsl(var(--chart-2))" },
+      { name: t.oneChangeLabel, "Likelihood": stage2_evaluation.categoryHitRates.oneChangeHitRate, fill: "hsl(var(--chart-3))" },
+      { name: t.doublesLabel, "Likelihood": stage2_evaluation.categoryHitRates.doubleNumberHitRate, fill: "hsl(var(--chart-4))" },
   ];
   
   const chartConfig: ChartConfig = {
-    "Hit Rate": {
-        label: t.hitRate,
+    "Likelihood": {
+        label: t.likelihood,
         color: "hsl(var(--foreground))"
     }
   };
@@ -304,53 +281,12 @@ const AnalysisDashboard = ({ data, language }: { data: AnalyzePatternsOutput, la
         <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
                 <WandSparkles className="h-6 w-6 text-accent" />
-                <CardTitle className="text-xl">{t.finalPrediction}</CardTitle>
+                <CardTitle className="text-xl">{t.executiveSummary}</CardTitle>
             </div>
-          <CardDescription>{t.predictionSubtitle}</CardDescription>
+          <CardDescription>{t.executiveSummarySubtitle}</CardDescription>
         </CardHeader>
         <CardContent>
             <p className="text-sm text-muted-foreground">{prediction}</p>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-            <CardTitle>{t.stage1Title}</CardTitle>
-            <CardDescription>{stage1_filtering.summary}</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Accordion type="single" collapsible defaultValue="candidates">
-                <AccordionItem value="candidates">
-                    <AccordionTrigger className="text-base">{t.candidateGroups}</AccordionTrigger>
-                    <AccordionContent className="space-y-4 pt-2">
-                       <div>
-                           <h4 className="font-semibold mb-2">{t.powerDigits}</h4>
-                           <div className="flex flex-wrap gap-2">{stage1_filtering.candidates.powerDigits.map(n => <NumberBadge key={n} number={n} />)}</div>
-                       </div>
-                       <div>
-                           <h4 className="font-semibold mb-2">{t.brotherPairs}</h4>
-                           <div className="flex flex-wrap gap-2">{stage1_filtering.candidates.brotherPairs.map(n => <NumberBadge key={n} number={n} />)}</div>
-                       </div>
-                       <div>
-                           <h4 className="font-semibold mb-2">{t.oneChange}</h4>
-                           <div className="flex flex-wrap gap-2">{stage1_filtering.candidates.oneChange.map(n => <NumberBadge key={n} number={n} />)}</div>
-                       </div>
-                       {stage1_filtering.candidates.doubles.length > 0 && (
-                        <div>
-                           <h4 className="font-semibold mb-2">{t.doubles}</h4>
-                           <div className="flex flex-wrap gap-2">{stage1_filtering.candidates.doubles.map(n => <NumberBadge key={n} number={n} />)}</div>
-                       </div>
-                       )}
-                    </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="final">
-                    <AccordionTrigger className="text-base">{t.finalCandidates} ({stage1_filtering.finalCandidates.length})</AccordionTrigger>
-                    <AccordionContent className="pt-2">
-                        <p className="text-sm text-muted-foreground mb-4">{t.finalCandidatesSubtitle}</p>
-                        <div className="flex flex-wrap gap-2">{stage1_filtering.finalCandidates.map(n => <NumberBadge key={n} number={n} />)}</div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
         </CardContent>
       </Card>
       
@@ -358,13 +294,13 @@ const AnalysisDashboard = ({ data, language }: { data: AnalyzePatternsOutput, la
         <CardHeader>
             <div className="flex items-center gap-2">
                 <Percent className="h-6 w-6 text-primary" />
-                <CardTitle className="text-xl">{t.stage2Title}</CardTitle>
+                <CardTitle className="text-xl">{t.analysisBreakdown}</CardTitle>
             </div>
-          <CardDescription>{stage2_evaluation.summary}</CardDescription>
+          <CardDescription>{t.analysisBreakdownSubtitle}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
             <div>
-                 <h4 className="font-semibold mb-2 text-base">{t.categoryHitRates}</h4>
+                 <h4 className="font-semibold mb-2 text-base">{t.categoryPerformance}</h4>
                  <ChartContainer config={chartConfig} className="h-52 w-full">
                     <BarChart accessibilityLayer data={chartData} margin={{ top: 20 }}>
                         <CartesianGrid vertical={false} />
@@ -374,7 +310,7 @@ const AnalysisDashboard = ({ data, language }: { data: AnalyzePatternsOutput, la
                         cursor={false}
                         content={<ChartTooltipContent indicator="dot" />}
                         />
-                        <Bar dataKey="Hit Rate" radius={4}>
+                        <Bar dataKey="Likelihood" radius={4}>
                             <LabelList position="top" offset={4} className="fill-foreground" fontSize={12} formatter={(value: number) => `${value.toFixed(1)}%`} />
                              {chartData.map((entry) => (
                                 <Cell key={`cell-${entry.name}`} fill={entry.fill} />
@@ -384,20 +320,18 @@ const AnalysisDashboard = ({ data, language }: { data: AnalyzePatternsOutput, la
                 </ChartContainer>
             </div>
             <div>
-                 <h4 className="font-semibold mb-2 text-base">{t.individualHitRates}</h4>
+                 <h4 className="font-semibold mb-2 text-base">{t.top10Candidates}</h4>
                  <div className="h-64 overflow-auto rounded-md border">
                     <Table>
                         <TableHeader className="sticky top-0 bg-muted/50">
                             <TableRow>
                                 <TableHead className="w-[100px]">{t.number}</TableHead>
                                 <TableHead>{t.hitCount}</TableHead>
-                                <TableHead className="text-right">{t.hitRate}</TableHead>
+                                <TableHead className="text-right">{t.likelihood}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {stage2_evaluation.individualHitRates
-                                .sort((a,b) => b.hitRate - a.hitRate)
-                                .map(item => (
+                            {top10Candidates.map(item => (
                                 <TableRow key={item.number}>
                                     <TableCell className="font-mono font-bold">{item.number}</TableCell>
                                     <TableCell>{item.count}</TableCell>
